@@ -1,0 +1,20 @@
+{
+  "name": "getaway-car",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "video": "node src/render.mjs video",
+    "audio": "node src/audio.mjs",
+    "stills": "node src/render.mjs stills",
+    "build": "node src/render.mjs video && node src/audio.mjs && ffmpeg -v error -y -i build/video.mp4 -i build/audio.wav -i build/subtitles_km.srt -i build/subtitles_en.srt -map 0:v -map 1:a -map 2 -map 3 -c:v copy -c:a aac -b:a 192k -c:s mov_text -metadata:s:s:0 language=khm -metadata:s:s:1 language=eng -t 90 -movflags +faststart '../Getaway Car.mp4'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.13"
+  }
+}
