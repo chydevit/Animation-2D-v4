@@ -1,5 +1,6 @@
 // The cast: Bong Smei (mentor), Bong Nimith (software engineer), Devit (junior developer): three men.
-// One person rig, natural cartoon proportions, soft pastel palette, clean line art.
+// One person rig in the Getaway Car cartoon manner: big heads, round/lanky silhouettes, rubber-hose limbs,
+// big eyes with small pupils, bushy brows, cartoon noses, a constant breathing bounce.
 // Origin = feet centre. facing: 1 = 3/4 turned to screen-right, 0 = front, -1 = 3/4 left. back: true = seen from behind.
 import { INK, LW, TAU, paint, circle, oval, rrect, poly, smooth, hose, cel, clamp, lerp, ik, hash } from './core.mjs';
 
@@ -16,17 +17,20 @@ export const P = {
   tea: '#f7f2ea', teaIn: '#b5793c', coffee: '#7b4a2c', ice: '#e9f6f7', cupLid: '#ffffff', marker: '#4f86c6', notebook: '#fff6dc',
 };
 export const CAST = {
-  smei: {
-    H: 420, sw: 50, ww: 44, skin: '#c98b5e', skinD: '#a86e46', hair: '#2a2426', gray: '#b9b4b4', beard: true,
-    shirt: '#2e8a57', shirtD: '#1f6b42', collar: '#45a56f', pants: '#c9a46a', pantsD: '#a8834d', shoe: '#5a3a28', style: 'polo', hairStyle: 'short', eyeSize: 0.9,
+  smei: { // stocky, round belly, bulb nose
+    H: 400, legs: 0.30, torso: 0.30, headS: 1.62, hx: 1.06, hy: 1.0, belly: 0.65, arm: 64, nose: 'bulb',
+    sw: 58, ww: 64, skin: '#c98b5e', skinD: '#a86e46', hair: '#2a2426', gray: '#b9b4b4', beard: true,
+    shirt: '#2e8a57', shirtD: '#1f6b42', collar: '#45a56f', pants: '#c9a46a', pantsD: '#a8834d', shoe: '#5a3a28', style: 'polo', hairStyle: 'short', eyeSize: 1.05,
   },
-  nimith: {
-    H: 410, sw: 46, ww: 40, skin: '#e0a378', skinD: '#c4865c', hair: '#1f1a22', glasses: true,
-    shirt: '#5aa8ec', shirtD: '#3f8bd0', collar: '#8cc6f7', pants: '#2d3a6b', pantsD: '#1e2750', shoe: '#2a2633', style: 'shirt', hairStyle: 'neat', eyeSize: 0.95,
+  nimith: { // tall and lanky, long neck, pointy nose (the "Marge" silhouette)
+    H: 475, legs: 0.47, torso: 0.29, headS: 1.42, hx: 0.9, hy: 1.12, belly: 0, arm: 80, nose: 'point', neck: 26,
+    sw: 38, ww: 30, skin: '#e0a378', skinD: '#c4865c', hair: '#1f1a22', glasses: true,
+    shirt: '#5aa8ec', shirtD: '#3f8bd0', collar: '#8cc6f7', pants: '#2d3a6b', pantsD: '#1e2750', shoe: '#2a2633', style: 'shirt', hairStyle: 'neat', eyeSize: 1.1,
   },
-  devit: {
-    H: 402, sw: 44, ww: 40, skin: '#d4955f', skinD: '#b5773f', hair: '#1f1c22', headphones: true,
-    shirt: '#f2823a', shirtD: '#d0632a', collar: '#ffb070', pants: '#3f6fbf', pantsD: '#2f569a', shoe: '#ffffff', style: 'hoodie', hairStyle: 'messy', eyeSize: 1.15,
+  devit: { // short, round and bouncy, giant head (the "Benny" silhouette)
+    H: 330, legs: 0.26, torso: 0.27, headS: 1.8, hx: 1.05, hy: 1.0, belly: 0.3, arm: 52, nose: 'button',
+    sw: 46, ww: 50, skin: '#d4955f', skinD: '#b5773f', hair: '#1f1c22', headphones: true,
+    shirt: '#f2823a', shirtD: '#d0632a', collar: '#ffb070', pants: '#3f6fbf', pantsD: '#2f569a', shoe: '#ffffff', style: 'hoodie', hairStyle: 'messy', eyeSize: 1.3,
   },
 };
 
@@ -62,7 +66,7 @@ export function phone(ctx, x, y, s = 1) { ctx.save(); ctx.translate(x, y); ctx.s
 
 // ---------------------------------------------------------------- hands
 function handShape(ctx, x, y, side, kind = 'open', rot = 0, skin = P.skin) {
-  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(side, 1);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(side * 1.18, 1.18);
   if (kind === 'thumb') {
     rrect(ctx, -11, -8, 22, 20, 7); paint(ctx, skin, LWP * 0.8);
     rrect(ctx, -6, -26, 9, 22, 4.5); paint(ctx, skin, LWP * 0.8);
@@ -78,7 +82,9 @@ function handShape(ctx, x, y, side, kind = 'open', rot = 0, skin = P.skin) {
 // returns skeleton targets in local space (y up = negative)
 function rig(c, o) {
   const H = c.H, f = o.facing ?? 0.4, ph = (o.ph || 0) * TAU;
-  const R = { hipY: -0.44 * H, shY: -0.74 * H, lean: 0, bodyY: 0, sit: false }; R.headY = R.shY - 58;
+  const HS = c.headS || HEAD, legs = c.legs ?? 0.44, torso = c.torso ?? 0.30;
+  const R = { hipY: -legs * H, lean: 0, bodyY: 0, sit: false, HS }; R.shY = R.hipY - torso * H; R.headY = R.shY - 40 * HS * (c.hy || 1) - (c.neck || 0);
+  const chest = R.shY + torso * H * 0.55;
   const sh = [[-c.sw, R.shY + 6], [c.sw, R.shY + 6]];
   let hands = [[-c.sw - 6, R.hipY + 4], [c.sw + 6, R.hipY + 4]], feet = [[-18, 0], [18, 0]], handKind = ['open', 'open'], handRot = [0, 0];
   const p = o.pose || 'stand';
@@ -89,42 +95,54 @@ function rig(c, o) {
     R.bodyY = -Math.abs(Math.sin(ph)) * 5;
   }
   if (o.sit || p === 'type' || p === 'sitBack' || p === 'sitTalk') {
-    R.sit = true; R.bodyY = 0.2 * H;
+    R.sit = true; R.bodyY = legs * H * 0.42;
     feet = [[-20 + f * 18, 0], [20 + f * 18, 0]];
   }
   if (p === 'type') { const b = Math.sin((o.t || 0) * 30); arm(0, -26 + f * 40, R.hipY + 18 - Math.max(0, b) * 8); arm(1, 26 + f * 40, R.hipY + 18 - Math.max(0, -b) * 8); handKind = ['fist', 'fist']; }
   if (p === 'thumbs') { arm(1, c.sw + 24, R.shY - 20); handKind[1] = 'thumb'; }
   if (p === 'wave') { arm(1, c.sw + 34, R.shY - 70); handRot[1] = Math.sin((o.t || 0) * 12) * 0.35; }
   if (p === 'draw') { arm(1, c.sw + 70 + (o.drawX || 0), R.shY - 40 + (o.drawY || 0)); handKind[1] = 'fist'; }
-  if (p === 'glasses') { arm(1, 46 + f * 16, R.headY - 10); handKind[1] = 'fist'; }
+  if (p === 'glasses') { arm(1, 30 * HS + 6 + f * 14, R.headY - 6 * HS); handKind[1] = 'fist'; }
   if (p === 'present') { arm(1, c.sw + 90, R.shY + 24); handRot[1] = -0.3; }
   if (p === 'presentL') { arm(0, -c.sw - 90, R.shY + 24); handRot[0] = 0.3; }
-  if (p === 'sip') { arm(1, 22 + f * 20, R.headY + 52); }
-  if (p === 'clap') { const k = Math.abs(Math.sin((o.t || 0) * 9)); arm(0, -10 - k * 22, R.shY + 40); arm(1, 10 + k * 22, R.shY + 40); }
-  if (p === 'hold') { arm(1, c.sw - 6, R.shY + 70); }
+  if (p === 'sip') { arm(1, 16 + f * 20, R.headY + 34 * HS); }
+  if (p === 'clap') { const k = Math.abs(Math.sin((o.t || 0) * 9)); arm(0, -10 - k * 22, chest - 20); arm(1, 10 + k * 22, chest - 20); }
+  if (p === 'hold') { arm(1, c.sw - 6, chest); }
   if (p === 'jump') { arm(0, -c.sw - 40, R.shY - 90); arm(1, c.sw + 40, R.shY - 90); feet = [[-26, -10], [26, -14]]; R.bodyY = -(o.hop || 0); }
   if (p === 'raise') { arm(1, c.sw + 6, R.shY - 110); }
-  if (p === 'panic') { arm(0, -66, R.headY - 20); arm(1, 66, R.headY - 20); handKind = ['open', 'open']; }
-  if (p === 'reach') { arm(1, o.reach[0], o.reach[1]); }
-  if (p === 'reachL') { arm(0, o.reach[0], o.reach[1]); }
-  if (p === 'notebook') { arm(0, -40, R.hipY - 30); arm(1, 40, R.hipY - 30); }
+  if (p === 'panic') { arm(0, -(40 * HS + 12), R.headY - 14 * HS); arm(1, 40 * HS + 12, R.headY - 14 * HS); handKind = ['open', 'open']; }
+  if (p === 'reach' && o.reach) { arm(1, o.reach[0], o.reach[1]); }
+  if (p === 'reachL' && o.reach) { arm(0, o.reach[0], o.reach[1]); }
+  if (p === 'notebook') { arm(0, -40, chest + 10); arm(1, 40, chest + 10); }
   if (p === 'highfive') { arm(1, c.sw + 60, R.shY - 90); }
   if (p === 'sitBack') { arm(0, -c.sw - 10, R.hipY + 10); arm(1, c.sw + 10, R.hipY + 10); }
   if (p === 'cheer') { arm(0, -c.sw - 30, R.shY - 100); arm(1, c.sw + 30, R.shY - 100); }
   // props in a hand keep the arm bent at the chest unless a pose says otherwise
   for (const side of [0, 1]) {
     const prop = o.hold?.[side];
-    if (prop && ['stand', 'walk', 'sitTalk'].includes(p)) arm(side, (side ? 1 : -1) * (c.sw - 4), R.shY + 70);
+    if (prop && ['stand', 'walk', 'sitTalk'].includes(p)) arm(side, (side ? 1 : -1) * (c.sw - 4), chest);
   }
   return { ...R, sh, hands, feet, handKind, handRot, f };
 }
+
+// ---------------------------------------------------------------- anchors (world positions for contact: hand on shoulder, high fives)
+export function anchors(who, o = {}) {
+  const c = typeof who === 'string' ? CAST[who] : who, s = o.s ?? 1, R = rig(c, o), m = o.mirror ? -1 : 1;
+  const w = ([x, y]) => [(o.x || 0) + x * s * m, (o.y || 0) + (y + (y < R.hipY + 20 ? R.bodyY : 0)) * s];
+  return { shL: w(R.sh[0]), shR: w(R.sh[1]), handL: w(R.hands[0]), handR: w(R.hands[1]), head: w([0, R.headY]), chest: w([0, R.shY + 40]) };
+}
+// world point -> a person's local space (for 'reach' targets)
+export const toLocal = (who, o, [wx, wy]) => { const c = typeof who === 'string' ? CAST[who] : who, s = o.s ?? 1, R = rig(c, o); return [(wx - (o.x || 0)) / s * (o.mirror ? -1 : 1), (wy - (o.y || 0)) / s - R.bodyY]; };
 
 // ---------------------------------------------------------------- the person
 // o: { x, y, s, facing, back, pose, ph, t, expr, mouth (0..1 lip-sync), look:[x,y], hold:[leftProp, rightProp], tilt, nod, hop, sq, alpha }
 export function person(ctx, who, o = {}) {
   const c = typeof who === 'string' ? CAST[who] : who, s = o.s ?? 1, t = o.t || 0; // a CAST key or a one-off look (extras)
   const R = rig(c, o);
-  ctx.save(); ctx.translate(o.x || 0, o.y || 0); ctx.scale(s * (1 + (o.sq || 0)) * (o.mirror ? -1 : 1), s / (1 + (o.sq || 0))); // mirror: flip the whole figure (use the opposite hand)
+  // cartoon life: a breathing bounce held on twos, and a little squash on every syllable
+  const tw = Math.floor(t * 12) / 12, breath = Math.sin(tw * Math.PI * 2 * 0.75 + (c.H % 7)) * 0.018;
+  const sq = (o.sq || 0) + breath + (o.mouth || 0) * 0.025;
+  ctx.save(); ctx.translate(o.x || 0, o.y || 0); ctx.scale(s * (1 + sq) * (o.mirror ? -1 : 1), s / (1 + sq)); // mirror: flip the whole figure (use the opposite hand)
   if (o.rot) ctx.rotate(o.rot);
   const by = R.bodyY;
   // legs
@@ -133,21 +151,22 @@ export function person(ctx, who, o = {}) {
     const hp = hips[i], ft = R.feet[i];
     if (R.sit && !o.back) { const kn = [hp[0] * 1.2 + R.f * 26, hp[1] + 34]; hose(ctx, [hp, kn], 26, c.pants, LWP); hose(ctx, [kn, [ft[0], ft[1] - 10]], 24, c.pantsD, LWP); }
     else if (R.sit && o.back) { hose(ctx, [hp, [hp[0] * 1.4, hp[1] + 30]], 26, c.pants, LWP); }
-    else { const L = (-R.hipY - 8 - 8) / 2 * 1.015, kn = ik(hp[0], hp[1], ft[0], ft[1] - 8, L, L, i ? 1 : -1); limb(ctx, [hp, kn, [ft[0], ft[1] - 8]], 26, i ? c.pants : c.pantsD); }
-    if (!(R.sit && o.back)) { ctx.beginPath(); ctx.ellipse(ft[0] + R.f * 6, ft[1] - 6, 17, 9, 0, 0, TAU); paint(ctx, c.shoe, LWP * 0.8); }
+    else { const L = (-R.hipY - 8 - 8) / 2 * 1.04, kn = ik(hp[0], hp[1], ft[0], ft[1] - 8, L, L, i ? 1 : -1); hose(ctx, [hp, kn, [ft[0], ft[1] - 8]], 26, i ? c.pants : c.pantsD, LWP); }
+    if (!(R.sit && o.back)) { ctx.beginPath(); ctx.ellipse(ft[0] + R.f * 8, ft[1] - 8, 21, 11, 0, 0, TAU); paint(ctx, c.shoe, LWP * 0.8); }
   }
   ctx.translate(0, by);
   // arms behind the body (back view)
   if (o.back) for (let i = 0; i < 2; i++) drawArm(ctx, c, R, i, o, t);
   // torso
-  const torso = () => smooth(ctx, [[-c.sw, R.shY + 4], [-c.sw * 0.55, R.shY - 6], [c.sw * 0.55, R.shY - 6], [c.sw, R.shY + 4], [c.ww + 4, R.hipY - 20], [c.ww, R.hipY + 14], [-c.ww, R.hipY + 14], [-c.ww - 4, R.hipY - 20]]);
+  const bel = (c.belly || 0) * 34, midY = lerp(R.shY, R.hipY, 0.62);
+  const torso = () => smooth(ctx, [[-c.sw, R.shY + 4], [-c.sw * 0.55, R.shY - 6], [c.sw * 0.55, R.shY - 6], [c.sw, R.shY + 4], [c.ww + 4 + bel, midY], [c.ww, R.hipY + 14], [-c.ww, R.hipY + 14], [-c.ww - 4 - bel, midY]]);
   cel(ctx, torso, c.shirt, c.shirtD, -R.f * 8 - 4, -4, LWP);
   if (!o.back) shirtDetails(ctx, c, R);
   else if (c.style === 'hoodie') { smooth(ctx, [[-30, R.shY - 4], [0, R.shY - 18], [30, R.shY - 4], [24, R.shY + 30], [0, R.shY + 40], [-24, R.shY + 30]]); paint(ctx, c.shirtD, LWP * 0.8); }
   // neck + head
   const nod = o.nod || 0, talkBob = (o.mouth || 0) * 2.5;
-  rrect(ctx, -11, R.shY - 26, 22, 30, 8); paint(ctx, c.skinD, 0);
-  ctx.save(); ctx.translate(0, R.headY + nod * 6 - talkBob * 0.5); ctx.rotate((o.tilt || 0) + nod * 0.05); ctx.scale(HEAD, HEAD);
+  rrect(ctx, -11, R.headY + 20, 22, R.shY - R.headY - 14, 8); paint(ctx, c.skinD, LWP * 0.6);
+  ctx.save(); ctx.translate(0, R.headY + nod * 6 - talkBob * 0.5); ctx.rotate((o.tilt || 0) + nod * 0.05); ctx.scale(R.HS * (c.hx || 1), R.HS * (c.hy || 1));
   if (o.back) headBack(ctx, c, R); else head(ctx, c, R, o, t);
   ctx.restore();
   if (c.headphones && !o.back) headphones(ctx, R);
@@ -157,9 +176,9 @@ export function person(ctx, who, o = {}) {
 function drawArm(ctx, c, R, i, o, t) {
   const shp = R.sh[i], hd = R.hands[i], side = i ? 1 : -1;
   // elbow: of the two IK solutions take the one that points outward and down (never across the face)
-  const e1 = ik(shp[0], shp[1], hd[0], hd[1], 70, 68, 1), e2 = ik(shp[0], shp[1], hd[0], hd[1], 70, 68, -1);
+  const A = c.arm || 70, e1 = ik(shp[0], shp[1], hd[0], hd[1], A, A, 1), e2 = ik(shp[0], shp[1], hd[0], hd[1], A, A, -1);
   const score = e => e[0] * side + e[1] * 0.35, el = score(e1) >= score(e2) ? e1 : e2;
-  limb(ctx, [shp, el, hd], 20, i ? c.shirt : c.shirtD);
+  hose(ctx, [shp, el, hd], 20, i ? c.shirt : c.shirtD, LWP);
   if (c.style === 'hoodie') { const a = Math.atan2(hd[1] - el[1], hd[0] - el[0]); circle(ctx, hd[0] - Math.cos(a) * 13, hd[1] - Math.sin(a) * 13, 10); paint(ctx, c.collar, LWP * 0.8); }
   const prop = o.hold?.[i];
   if (prop === 'tea') teaCup(ctx, hd[0] + side * 4, hd[1] + 6, 1, t, o.steam !== false);
@@ -232,18 +251,24 @@ function head(ctx, c, R, o, t) {
     const shrink = (i === 0 && f > 0.4) || (i === 1 && f < -0.4) ? 0.85 : 1;
     if (closed) { ctx.beginPath(); ctx.arc(ex, ey + 2, 8 * E, Math.PI * 1.1, Math.PI * 1.9); paint(ctx, null, 4); continue; }
     const big = expr === 'surprised' || expr === 'panic' ? 1.2 : 1;
-    oval(ctx, ex, ey, 7.5 * E * shrink * big, 9 * E * big); paint(ctx, P.white, 3.5);
-    circle(ctx, ex + lx, ey + 1 + ly, 5 * E * shrink); paint(ctx, P.eye, 0);
-    circle(ctx, ex + lx - 1.8, ey - 1.5 + ly, 1.8); paint(ctx, '#ffffff', 0);
+    // cartoon eyes: big whites, small pupils (Getaway Car style)
+    oval(ctx, ex, ey, 9.5 * E * shrink * big, 12 * E * big); paint(ctx, P.white, 4);
+    circle(ctx, ex + lx * 1.4 + 1, ey + 1.5 + ly * 1.3, (expr === 'panic' || expr === 'surprised' ? 2.6 : 3.8) * E * shrink); paint(ctx, P.eye, 0);
+    circle(ctx, ex + lx * 1.4 - 0.5, ey - 0.5 + ly * 1.3, 1.3 * E); paint(ctx, '#ffffff', 0);
   }
   // brows
   const bA = { worried: 0.3, panic: 0.45, surprised: -0.1, thinking: 0, determined: -0.25, proud: -0.05 }[expr] ?? -0.08;
-  for (const [i, ex] of eyes.entries()) { const k = i ? 1 : -1; ctx.save(); ctx.translate(ex, ey - 15 - (expr === 'surprised' ? 4 : 0) - (expr === 'thinking' && i ? 5 : 0)); ctx.rotate(-k * bA); ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); paint(ctx, null, 5, c.hair === '#2f2a2b' ? '#3a3333' : c.hair); ctx.restore(); }
+  // thick bushy brows with an ink outline; they carry the emotion
+  for (const [i, ex] of eyes.entries()) { const k = i ? 1 : -1; ctx.save(); ctx.translate(ex, ey - 13 * E - 4 - (expr === 'surprised' || expr === 'panic' ? 5 : 0) - (expr === 'thinking' && i ? 6 : 0)); ctx.rotate(-k * bA * 1.3); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.strokeStyle = INK; ctx.lineWidth = 11; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.strokeStyle = '#3d2b26'; ctx.lineWidth = 6; ctx.stroke(); ctx.restore(); }
   // glasses
-  if (c.glasses) { for (const ex of eyes) { circle(ctx, ex, ey, 12); paint(ctx, 'rgba(255,255,255,0.18)', 3); } ctx.beginPath(); ctx.moveTo(eyes[0] + 12, ey); ctx.lineTo(eyes[1] - 12, ey); paint(ctx, null, 3); }
+  if (c.glasses) { const gr = 14 * E; for (const ex of eyes) { circle(ctx, ex, ey, gr); paint(ctx, 'rgba(255,255,255,0.2)', 4); } ctx.beginPath(); ctx.moveTo(eyes[0] + gr, ey); ctx.lineTo(eyes[1] - gr, ey); paint(ctx, null, 4); }
   // nose + blush
-  ctx.beginPath(); ctx.moveTo(fx + f * 6 + 2, 2); ctx.quadraticCurveTo(fx + f * 10 + 6, 12, fx + f * 4, 14); paint(ctx, null, 3.5, c.skinD);
-  for (const ex of eyes) { oval(ctx, ex + (ex < fx ? -4 : 4), 12, 8, 4.5); ctx.fillStyle = P.blush; ctx.fill(); }
+  for (const ex of eyes) { oval(ctx, ex + (ex < fx ? -5 : 5), 14, 9, 5); ctx.fillStyle = P.blush; ctx.fill(); }
+  const nx = fx + f * 9, dir = f >= 0 ? 1 : -1;
+  if (c.nose === 'bulb') { oval(ctx, nx + 3, 9, 12, 10.5); paint(ctx, '#d98266', 4); oval(ctx, nx, 5, 3.5, 2.5); paint(ctx, 'rgba(255,255,255,0.65)', 0); }
+  else if (c.nose === 'point') { ctx.beginPath(); ctx.moveTo(nx - dir * 2, -2); ctx.quadraticCurveTo(nx + dir * 22, 10, nx + dir * 24, 14); ctx.quadraticCurveTo(nx + dir * 10, 17, nx - dir * 1, 14); paint(ctx, c.skinD, 4); }
+  else if (c.nose === 'button') { oval(ctx, nx + 2, 9, 7, 6); paint(ctx, '#e48f74', 3.5); }
+  else { ctx.beginPath(); ctx.moveTo(fx + f * 6 + 2, 2); ctx.quadraticCurveTo(fx + f * 10 + 6, 12, fx + f * 4, 14); paint(ctx, null, 3.5, c.skinD); }
   // beard (Smei)
   if (c.beard) {
     smooth(ctx, [[-34, 8], [-30, 30], [-14, 46], [0, 52], [14, 46], [30, 30], [34, 8], [24, 22], [10, 30], [0, 32], [-10, 30], [-24, 22]]); paint(ctx, '#4b4545', LWP * 0.8);

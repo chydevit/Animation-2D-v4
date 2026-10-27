@@ -35,6 +35,20 @@ take(b.end + 1.2, (ctx, lt, t) => { /* draw */ }, [...b.cues, [0, 'room_tone', {
 `H` (height px), `sw`/`ww` (shoulder and waist half-width), skin, hair, `hairStyle` (short | neat | messy |
 ponytail), `beard`, `glasses`, `headphones`, clothes `style` (polo | shirt | hoodie) and colours, `eyeSize`.
 
+**Cartoon proportions (use them; natural proportions look stiff next to Getaway Car):** each look can set `legs` and
+`torso` (fractions of H), `headS` (head scale, 1.4–1.8), `hx`/`hy` (head stretch), `belly` (0–0.7), `arm` (segment
+length), `nose` (`bulb`, `point` or `button`) and `neck`. The example cast follows Getaway Car's silhouettes:
+- **Devit** (the Benny type): short, round, giant head, huge eyes
+- **Nimith** (the Marge type): tall, lanky, pointy nose
+- **Smei:** stocky, with a round belly and a bulb nose
+
+Limbs are rubber hoses, eyes are big whites with small pupils, brows are thick and outlined, and every figure has a
+breathing bounce on twos plus a squash on each syllable.
+
+**Contact between characters:** use `anchors(who, o)` to get world positions (`shL`, `shR`, `handL`, `handR`,
+`head`, `chest`) and `toLocal(who, o, point)` for reach targets. A hand on a shoulder or a high five then lands
+correctly whatever the body shapes. The cover uses `anchors().head` to put every face at the same height.
+
 Options: `x, y, s, facing` (-1..1: 3/4 left to front to 3/4 right), `back` (seen from behind), `mirror` (flip
 the figure to use the other hand), `pose`, `t`, `expr`, `mouth` (lip-sync 0..1), `look:[x,y]`, `hold:[left,
 right]` (tea | coffee | marker | phone), `nod`, `tilt`, `sq`, `sit`.
@@ -56,6 +70,16 @@ own line cues. Narrator lines move no mouth. Small head bob comes with it. Befor
 procedurally, so early stills still show who's talking.
 
 ## 4. Staging dialogue scenes
+- **Keep it a cartoon, not just people talking.** Give every action Getaway Car treatment:
+  - smear ghosts on fast moves (chair spin, turn)
+  - squash on landings
+  - sound-effect words: TAP TAP TAP!, WHOOSH!, TING!, BOING!, KABOOM!, POW!, ZOOM!, YUM!
+  - impact stars on hits and reveals
+  - sweat drops and stress marks for panic
+  - sparkle stars for good ideas
+  - a camera shake on crashes
+
+  Leave the heartfelt ending quiet.
 - Shot pattern per scene: establishing wide → medium single on the speaker (cam zoom 1.5–2.1) → reaction or
   two-shot → back to wide for the button. "Cut between all three" = a single on each speaker.
 - Give each speaker an action: turn to camera, adjust glasses, sip tea, thumbs up. Put it in the gap

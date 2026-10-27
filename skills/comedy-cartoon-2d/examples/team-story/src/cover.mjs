@@ -3,7 +3,7 @@ import { createCanvas } from '@napi-rs/canvas';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { W, H, INK, rrect, paint, poly, text } from './core.mjs';
-import { person } from './people.mjs';
+import { person, anchors, CAST } from './people.mjs';
 import * as st from './sets.mjs';
 
 const film = JSON.parse(fs.readFileSync('film.json', 'utf8'));
@@ -20,11 +20,20 @@ ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = '#ffffff';
 for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; poly(ctx, [[960, 760], [960 + Math.cos(a) * 1600, 760 + Math.sin(a) * 1600], [960 + Math.cos(a + 0.12) * 1600, 760 + Math.sin(a + 0.12) * 1600]]); ctx.fill(); }
 ctx.restore();
 
-// the cast, big: Devit (thumbs up) – Smei (tea, proud) – Nimith (notebook / glasses)
-person(ctx, 'nimith', { x: 1470, y: 1500, s: 1.95, facing: -0.35, pose: 'glasses', expr: 'smile', t, look: [-0.2, 0.1] });
-person(ctx, 'devit', { x: 450, y: 1520, s: 2.0, facing: 0.35, pose: 'thumbs', hold: ['coffee', null], expr: 'grin', t, look: [0.2, 0.1] });
-person(ctx, 'smei', { x: 960, y: 1560, s: 2.15, facing: 0.05, pose: 'hold', hold: [null, 'tea'], expr: 'grin', t });
-
+// the cast, big: Devit (thumbs up) – Smei (tea, smiling) – Nimith (glasses). Faces are placed by their head
+// anchors, so the composition holds whatever the body proportions are.
+const cast = [
+  ['nimith', { x: 1480, s: 1.75, facing: -0.35, pose: 'glasses', expr: 'smile', look: [-0.2, 0.1] }, 'ENGINEER', '#3f8bd0', 0.07],
+  ['devit', { x: 460, s: 2.05, facing: 0.35, pose: 'thumbs', hold: ['coffee', null], expr: 'grin', look: [0.2, 0.1] }, 'DEVELOPER', '#f2823a', -0.07],
+  ['smei', { x: 960, s: 1.95, facing: 0.05, pose: 'hold', hold: [null, 'tea'], expr: 'grin' }, 'MENTOR', '#2e8a57', 0],
+];
+const FACE_Y = 690, tags = [];
+for (const [who, o, word, col, rot] of cast) {
+  const headY = anchors(who, { ...o, x: 0, y: 0 }).head[1], y = FACE_Y - headY;
+  person(ctx, who, { ...o, y, t });
+  const R = CAST[who].headS * CAST[who].hy * 46 * o.s;            // head half-height on screen
+  tags.push([o.x, FACE_Y - R - 70, word, col, rot]);
+}
 // title banner
 ctx.save(); ctx.translate(960, 190); ctx.rotate(-0.025);
 rrect(ctx, -720, -120, 1440, 250, 60); paint(ctx, '#fff6e6', 10);
@@ -33,9 +42,7 @@ text(ctx, 'Bong Smei, Bong Nimith & Devit', 0, 82, { size: 44, font: 'Arial Blac
 ctx.restore();
 // small tags
 const tag = (x, y, words, col, rot) => { ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.font = '40px "Arial Black"'; const w = ctx.measureText(words).width / 2 + 34; rrect(ctx, -w, -36, w * 2, 72, 36); paint(ctx, col, 7); text(ctx, words, 0, 2, { size: 38, font: 'Arial Black', fill: '#ffffff', lw: 0 }); ctx.restore(); };
-tag(450, 545, 'DEVELOPER', '#f2823a', -0.07);
-tag(960, 470, 'MENTOR', '#2e8a57', 0);
-tag(1470, 545, 'ENGINEER', '#3f8bd0', 0.07);
+for (const [x, y, w, col, rot] of tags) tag(x, y, w, col, rot);
 
 fs.mkdirSync('film', { recursive: true });
 fs.writeFileSync('film/cover.png', cv.toBuffer('image/png'));

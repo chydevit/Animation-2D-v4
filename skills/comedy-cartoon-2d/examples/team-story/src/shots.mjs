@@ -3,7 +3,8 @@
 import { W, H, INK, TAU, paint, circle, oval, rrect, poly, text, clamp, lerp, seg, ease, onTwos, hash, wobble } from './core.mjs';
 import { take, clock, beats, talk, cam, toScreen, shk, duration } from './kit.mjs';
 import { lineDur } from './vox.mjs';
-import { person, chair, chairBack, CAST, notebook, icedCoffee } from './people.mjs';
+import { person, chair, chairBack, CAST, notebook, icedCoffee, anchors, toLocal as localOf } from './people.mjs';
+import { drop } from './chars.mjs';
 import * as st from './sets.mjs';
 import * as fx from './fx.mjs';
 
@@ -32,6 +33,10 @@ function titleKh(ctx, lt, inAt, outAt, kh, en, y = 300) {
   ctx.restore();
 }
 const scene = (lens) => lens.reduce((a, b) => a + b, 0);
+// Getaway Car-style cartoon helpers
+const ghosts = (ctx, n, fn) => { for (let i = n; i >= 1; i--) { ctx.save(); ctx.globalAlpha = 0.16; fn(i); ctx.restore(); } };
+const sweat = (ctx, x, y, s, t, n = 3) => { for (let i = 0; i < n; i++) { const k = (t * 1.8 + i / n) % 1, side = i % 2 ? 1 : -1; ctx.save(); ctx.globalAlpha = 1 - k; drop(ctx, x + side * (40 + k * 90) * s, y - Math.sin(k * Math.PI) * 60 * s + k * 40 * s, s * 1.3, side * 0.5); ctx.restore(); } };
+const star = (ctx, x, y, k, s = 1) => { if (k <= 0 || k >= 1) return; const sc = Math.sin(k * Math.PI) * s; ctx.save(); ctx.translate(x, y); ctx.rotate(k * 3); ctx.scale(sc, sc); ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, r = i % 2 ? 9 : 26; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.closePath(); paint(ctx, '#fff6c0', 4); ctx.restore(); };
 
 // ============================================================ SCENE 1 — Introduction
 {
@@ -62,15 +67,19 @@ const scene = (lens) => lens.reduce((a, b) => a + b, 0);
     if (spin >= 1) facing = 0.12;
     if (lt > SP + 0.5 && lt < b.at.d1 + D('d1') * 0.8) pose = 'thumbs';
     const bounce = spin >= 1 ? wobble(lt - SP - 0.5, 3, 6) * 0.06 : 0;
-    chairBack(ctx, 760, 1180, 1.45, '#8fa6c9');
-    pp(ctx, 'devit', t, { x: 760, y: 1180, s: 1.45, facing, back, pose, sit: true, expr, look, sq: bounce });
+    chairBack(ctx, 760, 1110, 1.45, '#8fa6c9');
+    if (spin > 0.05 && spin < 0.95) ghosts(ctx, 3, i => pp(ctx, 'devit', t, { x: 760 - i * 26 * Math.sin(spin * 9), y: 1080, s: 1.5, facing: -facing, back: !back, pose: 'sitTalk', sit: true, expr }));
+    pp(ctx, 'devit', t, { x: 760, y: 1080, s: 1.5, facing, back, pose, sit: true, expr, look, sq: bounce + (spin > 0 && spin < 1 ? -0.12 * Math.sin(spin * Math.PI) : 0) });
+    if (pose === 'thumbs') star(ctx, 760 + 1.5 * 70, 1080 - 1.5 * 250, seg(lt, SP + 0.5, SP + 1.1), 1.4);
     if (spin > 0.05 && spin < 0.9) { ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 8; ctx.lineCap = 'round'; for (const r of [230, 270]) { ctx.beginPath(); ctx.ellipse(760, 760, r, r * 0.35, 0, Math.PI * (0.1 + spin), Math.PI * (0.8 + spin)); ctx.stroke(); } ctx.restore(); }
     st.desk(ctx, 980, 1010, 1600, { monitorX: 330, t, codeSpeed: 3 });
     icedCoffee(ctx, 520, 975, 1.1);
     if (lt < SP + 0.2) st.flyingCode(ctx, 1290, 760, t, 16, 1);
+    fx.sfxText(ctx, 'TAP TAP TAP!', 1120, 470, seg(lt, 0.2, SP), { size: 64, fill: '#ffd23f', rot: -0.1, wob: 4 });
+    fx.sfxText(ctx, 'WHOOSH!', 600, 420, seg(lt, SP, SP + 0.8), { size: 80, fill: '#7fd3c8', rot: 0.12 });
     ctx.restore();
     warmLight(ctx, 0.12);
-  }, [[0, 'music_end', { id: 'w1', how: 'fade', dur: 0.6 }], [0, 'music', { id: 'u1', style: 'upbeat', gain: 0.6 }], [0, 'room_tone', { dur: len }], [0, 'typing', { dur: SP, rate: 16 }], [SP, 'swivel'], [SP + 0.55, 'sparkle'], ...b.cues, [b.end + 0.4, 'blink']]);
+  }, [[0, 'music_end', { id: 'w1', how: 'fade', dur: 0.6 }], [0, 'music', { id: 'u1', style: 'upbeat', gain: 0.6 }], [0, 'room_tone', { dur: len }], [0, 'typing', { dur: SP, rate: 16 }], [SP, 'swivel'], [SP, 'zip_up'], [SP + 0.5, 'boing', { pitch: 1.4 }], [SP + 0.55, 'sparkle'], ...b.cues, [b.end + 0.4, 'blink']]);
 }
 
 // ============================================================ SCENE 3 — Meet Bong Nimith
@@ -91,14 +100,19 @@ function bgDevit(ctx, t, { wave = 0, look = [1, 0] } = {}) {
     if (!turned) {
       const a = lt * 5, [hx, hy] = toLocal(1400 + Math.cos(a) * 90, 330 + Math.sin(a * 1.3) * 60, NIM);
       pp(ctx, 'nimith', t, { ...NIM, back: true, pose: 'reach', reach: [hx, hy], hold: [null, 'marker'] });
+      fx.sfxText(ctx, 'SQUEAK!', 1560, 220, seg(lt, 0.5, 2.3), { size: 52, fill: '#7fd3c8', rot: 0.1, wob: 4 });
     } else {
+      const tk = seg(lt, DRAW + 0.15, DRAW + 0.45);
+      if (tk > 0 && tk < 1) ghosts(ctx, 3, i => pp(ctx, 'nimith', t, { ...NIM, x: NIM.x - i * 30, back: true, pose: 'stand' }));
       const pose = lt < 3.6 ? 'glasses' : 'hold';
       pp(ctx, 'nimith', t, { ...NIM, facing: 0.25, pose, hold: [null, 'marker'], expr: lt < 3.6 ? 'calm' : 'smile', sq: wobble(lt - DRAW - 0.15, 3, 7) * 0.05 });
-      if (lt > 3.0 && lt < 3.5) { const [gx, gy] = [NIM.x + 30, NIM.y - 515]; fx.puff(ctx, gx, gy, 10 * (1 - seg(lt, 3.0, 3.5)), '#ffffff', 1); }
+      const hd = anchors('nimith', { ...NIM, facing: 0.25, pose: 'glasses' }).head;
+      star(ctx, hd[0] + 50, hd[1] - 6, seg(lt, 3.0, 3.6), 1.7);
+      fx.sfxText(ctx, 'TING!', hd[0] + 170, hd[1] - 90, seg(lt, 3.0, 3.9), { size: 56, fill: '#fff6c0', rot: 0.1 });
     }
     ctx.restore();
     warmLight(ctx, 0.1);
-  }, [[0, 'music_end', { id: 'u1', how: 'fade', dur: 0.5 }], [0, 'music', { id: 'w2', style: 'warm', gain: 0.6, melody: false }], [0, 'room_tone', { dur: len }], [0.2, 'marker', { dur: DRAW - 0.3 }], [DRAW + 0.15, 'whoosh', { f0: 600, f1: 2000, dur: 0.25, gain: 0.35 }], [3.05, 'sparkle'], ...b.cues]);
+  }, [[0, 'music_end', { id: 'u1', how: 'fade', dur: 0.5 }], [0, 'music', { id: 'w2', style: 'warm', gain: 0.6, melody: false }], [0, 'room_tone', { dur: len }], [0.2, 'marker', { dur: DRAW - 0.3 }], [DRAW + 0.15, 'whoosh', { f0: 600, f1: 2000, dur: 0.25, gain: 0.35 }], [DRAW + 0.15, 'zip_up'], [3.05, 'sparkle'], [3.05, 'register_ding'], ...b.cues]);
 }
 {
   const b = beats([0.6, 'n2']), len = b.end + 1.3, sayAt = b.at.n2 + D('n2') * 0.55;
@@ -123,6 +137,7 @@ const SMEI_IN = 3.8;
     const wk = seg(lt, 0.5, 3.2), x = lerp(1830, 1520, ease.out(wk));
     const nodD = lt > 2.3 && lt < 2.8 ? Math.sin(seg(lt, 2.3, 2.8) * Math.PI) : 0, nodN = lt > 3.0 && lt < 3.5 ? Math.sin(seg(lt, 3.0, 3.5) * Math.PI) : 0;
     pp(ctx, 'nimith', t, { ...NIM, x: 1240, facing: 0.6, pose: 'hold', hold: [null, 'marker'], expr: 'smile', nod: nodN * 0.6 });
+    fx.sfxText(ctx, 'CREAK...', 1700, 300, seg(lt, 0, 1.2), { size: 50, fill: '#e6b52e', rot: -0.08 });
     pp(ctx, 'smei', t, { x, y: 1040, s: 1.3, facing: lt < 2.6 ? -0.5 : -0.2, pose: wk < 1 ? 'walk' : 'stand', ph: lt * 1.5, hold: [null, 'tea'], expr: 'smile', nod: nodD + nodN });
     ctx.restore();
     warmLight(ctx, 0.28);
@@ -134,7 +149,8 @@ const SMEI_IN = 3.8;
     ctx.save(); cam(ctx, 1150, 580, 1.75);
     st.office(ctx, t, { board: 1, light: 'gold' });
     const sip = lt > b.end + 0.3 && lt < b.end + 1.3;
-    pp(ctx, 'smei', t, { x: 1150, y: 1060, s: 1.35, facing: 0.15, pose: sip ? 'sip' : 'hold', hold: [null, 'tea'], expr: sip ? 'proud' : 'smile' });
+    pp(ctx, 'smei', t, { x: 1150, y: 975, s: 1.4, facing: 0.15, pose: sip ? 'sip' : 'hold', hold: [null, 'tea'], expr: sip ? 'proud' : 'smile' });
+    fx.sfxText(ctx, 'SLURP!', 1340, 360, seg(lt, b.end + 0.45, b.end + 1.4), { size: 52, fill: '#ffd23f', rot: 0.1, wob: 3 });
     ctx.restore();
     warmLight(ctx, 0.3);
     // golden light beams
@@ -143,7 +159,7 @@ const SMEI_IN = 3.8;
 }
 
 // ============================================================ SCENE 5 — The Big Project
-const MEET = { smei: { x: 1180, y: 1040, s: 1.2 }, devit: { x: 1470, y: 1120, s: 1.15 }, nimith: { x: 1760, y: 1120, s: 1.12 } };
+const MEET = { smei: { x: 1180, y: 1040, s: 1.2 }, devit: { x: 1470, y: 1050, s: 1.2 }, nimith: { x: 1760, y: 1120, s: 1.12 } };
 function meeting(ctx, t, { devit = {}, nimith = {}, smei = {} } = {}) {
   st.meetingRoom(ctx, t);
   pp(ctx, 'smei', t, { ...MEET.smei, facing: -0.35, pose: 'presentL', hold: [null, 'tea'], expr: 'smile', ...smei });
@@ -167,7 +183,9 @@ function meeting(ctx, t, { devit = {}, nimith = {}, smei = {} } = {}) {
     ctx.save(); cam(ctx, 1470, 640, 1.75);
     const wind = seg(lt, 0, 0.22), up = seg(lt, 0.22, 0.5);
     const hop = up > 0 ? ease.out(up) * 150 + Math.sin(lt * 9) * 6 * (up >= 1 ? 1 : 0) : 0;
-    meeting(ctx, t, { devit: up > 0 ? { pose: 'jump', sit: false, hop, y: MEET.devit.y - 60, facing: 0.1, expr: 'laugh', sq: up < 1 ? -0.08 : wobble(lt - 0.5, 3, 6) * 0.05 } : { sq: 0.1 * wind }, nimith: { look: [-1, -0.5] } });
+    meeting(ctx, t, { devit: up > 0 ? { pose: 'jump', sit: false, hop, y: MEET.devit.y + 40, facing: 0.1, expr: 'laugh', sq: up < 1 ? -0.22 * Math.sin(up * Math.PI) : wobble(lt - 0.5, 3, 6) * 0.1 } : { sq: 0.28 * ease.in(wind) }, nimith: { look: [-1, -0.5] } });
+    if (up > 0 && up < 1) { ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 8; ctx.lineCap = 'round'; for (const dx of [-90, -30, 40, 100]) { ctx.beginPath(); ctx.moveTo(1470 + dx, 900); ctx.lineTo(1470 + dx, 1040); ctx.stroke(); } ctx.restore(); }
+    fx.sfxText(ctx, 'BOING!', 1720, 480, seg(lt, 0.25, 1.1), { size: 90, fill: '#ffd23f', rot: 0.1 });
     if (up > 0) fx.dust(ctx, 1470, 860, seg(lt, 0.25, 0.9), { n: 5, spread: 120, r: 24, col: '#ffffff', seed: 4 });
     ctx.restore();
   }, [[0, 'room_tone', { dur: len }], [0.22, 'boing', { pitch: 1.2 }], [0.25, 'sting_idea'], ...b.cues]);
@@ -178,6 +196,7 @@ function meeting(ctx, t, { devit = {}, nimith = {}, smei = {} } = {}) {
     ctx.save(); cam(ctx, 1700, 640, 1.75);
     const raised = lt > 0.2 && lt < b.at.m4 + 0.4;
     meeting(ctx, t, { nimith: { pose: raised ? 'raise' : 'sitTalk', facing: -0.2, expr: lt > b.at.m4 ? 'thinking' : 'calm' }, devit: { look: [1, 0], expr: lt > b.at.m4 + 1.0 ? 'worried' : 'smile' } });
+    if (raised) { const h = anchors('nimith', { ...MEET.nimith, facing: -0.2, pose: 'raise', sit: true }).handR; fx.sfxText(ctx, '!', h[0] + 60, h[1] - 50, seg(lt, 0.25, 1.4), { size: 120, fill: '#ff5c8a', rot: 0.15 }); }
     ctx.restore();
   }, [[0, 'room_tone', { dur: len }], [0.2, 'whoosh', { f0: 800, f1: 2200, dur: 0.2, gain: 0.25 }], ...b.cues]);
 }
@@ -204,6 +223,8 @@ function meeting(ctx, t, { devit = {}, nimith = {}, smei = {} } = {}) {
     pp(ctx, 'nimith', t, { x: 1110, y: 1070, s: 1.2, facing: -0.1, pose: 'clap', expr: 'grin' });
     ctx.restore();
     st.confetti(ctx, t, { n: 110, area: [0, -200, W, H + 200] });
+    fx.impact(ctx, 420, 300, 110, seg(lt, 0.12, 0.8), { word: 'POP!', size: 70, col: '#ffd23f', wcol: '#ff5c8a' });
+    fx.sfxText(ctx, 'YAY!', 1500, 320, seg(lt, 0.5, 1.8), { size: 100, fill: '#7fd3c8', rot: 0.12, wob: 3 });
   }, [[0, 'music_end', { id: 'w3', how: 'fade', dur: 0.4 }], [0, 'music', { id: 'tr1', style: 'triumph', gain: 0.6 }], [0.15, 'party_pop'], [0.45, 'party_horn'], ...b.cues]);
 }
 let ERR_AT = 0;
@@ -217,27 +238,31 @@ let ERR_AT = 0;
     const [sx, sy] = shk(t, e > 0 && lt < err + 0.5 ? 12 : 0);
     const orders = 1 + Math.pow(lt / Math.max(0.1, err), 1.7) * 22;
     st.phoneScreen(ctx, 960 + sx, 560 + sy, 1.08, t, { orders, error: e });
-    if (e > 0) st.redWash(ctx, t, 1);
+    for (const [pt] of pings) { const k = seg(lt, pt, pt + 0.5); if (k > 0 && k < 1) { const h = hash(pt * 13); fx.sfxText(ctx, 'DING!', h > 0.5 ? 1400 + h * 300 : 300 + h * 300, 200 + hash(pt * 7) * 600, k, { size: 50, fill: '#ffd23f', rot: (h - 0.5) * 0.5 }); } }
+    if (e > 0) { st.redWash(ctx, t, 1); fx.impact(ctx, 1450, 330, 170, seg(lt, err, err + 1.0), { word: 'CRASH!', size: 80, col: '#ffd23f', wcol: '#e8433a' }); }
   }, [...pings, ...b.cues, [err, 'music_end', { id: 'tr1', how: 'tapestop', dur: 0.8 }], [err, 'error_buzz'], [err + 0.1, 'alarm_beep', { n: 4 }]]);
 }
 {
   const len = 1.6;
   take(len, (ctx, lt, t) => {
-    const [sx, sy] = shk(t, 6);
+    const [sx, sy] = shk(t, lt < 0.6 ? 22 * (1 - lt / 0.6) + 5 : 5);
     ctx.save(); ctx.translate(sx, sy);
     ctx.fillStyle = '#3b3550'; ctx.fillRect(0, 0, W, H);
     st.serverRack(ctx, 620, 1020, 1.5, t, { smoke: 1, n: 3 });
-    fx.sfxText(ctx, 'ERROR 500', 1500, 300, seg(lt, 0.1, 1.6), { size: 110, fill: '#ff6b6b', rot: 0.06, wob: 3 });
+    fx.dust(ctx, 860, 300, seg(lt, 0.05, 1.3), { n: 9, spread: 380, r: 90, col: '#5a5068', rise: 120, seed: 31 });
+    fx.impact(ctx, 1420, 330, 220, seg(lt, 0.05, 1.3), { word: 'KABOOM!', size: 96, col: '#ffd23f', wcol: '#e8433a' });
     ctx.restore();
     st.redWash(ctx, t, 1);
-  }, [[0, 'music', { id: 'tn', style: 'tension', gain: 0.8 }], [0, 'steam_hiss'], [0.2, 'server_hum', { dur: 1.4 }], [0.5, 'alarm_beep', { n: 3 }]]);
+  }, [[0, 'music', { id: 'tn', style: 'tension', gain: 0.8 }], [0.05, 'crash'], [0, 'steam_hiss'], [0.2, 'server_hum', { dur: 1.4 }], [0.5, 'alarm_beep', { n: 3 }]]);
 }
 {
   const b = beats([0.3, 'd4', 0.25, 'd5']), len = b.end + 0.5;
   take(len, (ctx, lt, t) => {
     ctx.save(); cam(ctx, 960, 560, 1.9);
     st.office(ctx, t, { board: 1 });
-    pp(ctx, 'devit', t, { x: 960, y: 1080, s: 1.3, facing: 0.05, pose: 'panic', expr: 'panic', sq: Math.sin(t * 30) * 0.008 });
+    pp(ctx, 'devit', t, { x: 960 + Math.sin(t * 60) * 4, y: 980, s: 1.55, facing: 0.05, pose: 'panic', expr: 'panic', sq: Math.sin(t * 30) * 0.02 });
+    sweat(ctx, 960, 980 - 1.55 * 260, 1.4, t, 4);
+    fx.stressMarks(ctx, 1220, 440, 2.2, t); fx.stressMarks(ctx, 700, 470, 1.8, t + 0.3);
     ctx.restore();
     st.redWash(ctx, t, 1);
   }, [...b.cues, [0.35, 'heartbeat', { n: 2 }]]);
@@ -247,14 +272,16 @@ let ERR_AT = 0;
   take(len, (ctx, lt, t) => {
     ctx.save(); cam(ctx, 1080, 580, 1.45);
     st.office(ctx, t, { board: 1 });
-    const DV = { x: 900, y: 1080, s: 1.3 }, SM = { x: 1150, y: 1060, s: 1.3 };
+    const DV = { x: 900, y: 1010, s: 1.4 }, SM = { x: 1140, y: 1060, s: 1.35 };
     const reach = ease.inOut(seg(lt, 0.2, 0.8));
-    // Devit's right shoulder in world space -> Smei's local space
-    const shW = [DV.x + 40 * DV.s, DV.y - 0.74 * CAST.devit.H * DV.s + 14];
-    const tgt = [(shW[0] - SM.x) / SM.s, (shW[1] - SM.y) / SM.s];
     const calm = seg(lt, b.at.s6, b.at.s7 + 0.5);
-    pp(ctx, 'devit', t, { ...DV, facing: 0.35, pose: calm < 0.6 ? 'panic' : 'stand', expr: calm < 0.4 ? 'panic' : calm < 1 ? 'worried' : 'smile', look: [1, -0.3] });
-    pp(ctx, 'smei', t, { ...SM, facing: -0.45, pose: 'reachL', reach: [lerp(-60, tgt[0], reach), lerp(-190, tgt[1], reach)], hold: [null, 'tea'], expr: 'calm' });
+    const dvo = { ...DV, facing: 0.35, pose: calm < 0.6 ? 'panic' : 'stand' };
+    // Devit's right shoulder (world) -> Smei's local space, so the hand lands on it whatever the body shapes
+    const tgt = localOf('smei', { ...SM, pose: 'reachL' }, anchors('devit', dvo).shR);
+    pp(ctx, 'devit', t, { ...dvo, expr: calm < 0.4 ? 'panic' : calm < 1 ? 'worried' : 'smile', look: [1, -0.3] });
+    if (calm < 0.5) sweat(ctx, DV.x, DV.y - DV.s * 250, 1.2, t, 3);
+    pp(ctx, 'smei', t, { ...SM, facing: -0.45, pose: 'reachL', reach: [lerp(-60, tgt[0], reach), lerp(-150, tgt[1], reach)], hold: [null, 'tea'], expr: 'calm' });
+    if (calm >= 1) star(ctx, 1290, 520, seg(lt, b.at.s7 + 0.5, b.at.s7 + 1.4), 1.3);
     ctx.restore();
     st.redWash(ctx, t, 1 - calm);
     warmLight(ctx, 0.2 * calm);
@@ -270,10 +297,13 @@ const plan = ctx => { ctx.save(); ctx.translate(30, -6); st.archDiagram(ctx, 0, 
     st.office(ctx, t, { board: 1 });
     const N = { x: 1000, y: 1080, s: 1.3 };
     pp(ctx, 'nimith', t, { ...N, facing: 0.05, pose: 'notebook', expr: 'calm', look: [0, 0.4] });
-    notebook(ctx, N.x, N.y + (-0.44 * CAST.nimith.H - 40) * N.s, 2.3, ease.out(seg(lt, 0.25, 0.7)), plan);
+    const an = anchors('nimith', { ...N, facing: 0.05, pose: 'notebook' });
+    notebook(ctx, (an.handL[0] + an.handR[0]) / 2, (an.handL[1] + an.handR[1]) / 2 + 20, 2.3, ease.out(seg(lt, 0.25, 0.7)), plan);
+    star(ctx, N.x - 260, N.y - 560, seg(lt, 0.6, 1.3), 1.5); star(ctx, N.x + 250, N.y - 600, seg(lt, 0.75, 1.45), 1.2);
+    fx.sfxText(ctx, 'TA-DA!', N.x + 330, N.y - 680, seg(lt, 0.6, 1.8), { size: 70, fill: '#ffd23f', rot: 0.1 });
     ctx.restore();
     warmLight(ctx, 0.12);
-  }, [[0, 'music', { id: 'bd', style: 'build', gain: 0.55 }], [0, 'room_tone', { dur: len }], [0.3, 'page_flip'], ...b.cues]);
+  }, [[0, 'music', { id: 'bd', style: 'build', gain: 0.55 }], [0, 'room_tone', { dur: len }], [0.3, 'page_flip'], [0.6, 'ta_da_small'], ...b.cues]);
 }
 {
   const b = beats([0.4, 'm6', 0.3, 'd6']), len = b.end + 1.1;
@@ -283,15 +313,17 @@ const plan = ctx => { ctx.save(); ctx.translate(30, -6); st.archDiagram(ctx, 0, 
     ctx.save(); poly(ctx, [[0, 0], [W / 2 + 70, 0], [W / 2 - 70, H], [0, H]]); ctx.clip();
     ctx.fillStyle = '#f8e6d6'; ctx.fillRect(0, 0, W, H);
     st.dashboard(ctx, 70, 120, 860, 620, t, { servers: 1 + 4 * ease.inOut(seg(lt, LB, len - 0.4)), lb: seg(lt, LB - 0.3, LB + 0.2), bars: seg(lt, LB, len) });
-    pp(ctx, 'nimith', t, { x: 300, y: 1420, s: 1.55, facing: 0.5, pose: 'reach', reach: [150, -430], expr: 'calm' });
+    pp(ctx, 'nimith', t, { x: 300, y: 1480, s: 1.45, facing: 0.5, pose: 'reach', reach: [150, -520], expr: 'calm' });
+    fx.sfxText(ctx, 'BEEP BOOP!', 520, 820, seg(lt, LB, LB + 1.2), { size: 54, fill: '#c3a8ff', rot: -0.08 });
     ctx.restore();
     // right panel: Devit makes the code faster
     ctx.save(); poly(ctx, [[W / 2 + 70, 0], [W, 0], [W, H], [W / 2 - 70, H]]); ctx.clip();
     ctx.fillStyle = '#2c3247'; ctx.fillRect(0, 0, W, H);
     ctx.save(); ctx.translate(1060, 90); ctx.scale(2.2, 2.2); st.codeLines(ctx, 0, 0, t * 5, 20); ctx.restore();
     ctx.fillStyle = 'rgba(44,50,71,0.45)'; ctx.fillRect(960, 0, 960, H);
-    pp(ctx, 'devit', t, { x: 1480, y: 1330, s: 1.75, facing: 0.15, pose: 'type', sit: true, expr: 'determined' });
-    text(ctx, 'speed ++', 1700, 160, { size: 46, font: 'Arial Black', fill: '#8fe3c4', lw: 0 });
+    pp(ctx, 'devit', t, { x: 1480, y: 1110, s: 1.8, facing: 0.15, pose: 'type', sit: true, expr: 'determined' });
+    fx.speedStreaks(ctx, 1500, 700, 380, 500, t, { n: 7, dir: -1, alpha: 0.5 });
+    fx.sfxText(ctx, 'CLICK CLACK!', 1560, 170, 0.5, { size: 60, fill: '#8fe3c4', rot: -0.06 + Math.sin(t * 20) * 0.02 });
     ctx.restore();
     ctx.beginPath(); ctx.moveTo(W / 2 + 70, 0); ctx.lineTo(W / 2 - 70, H); paint(ctx, null, 14, '#fff6ea'); ctx.beginPath(); ctx.moveTo(W / 2 + 70, 0); ctx.lineTo(W / 2 - 70, H); paint(ctx, null, 5);
   }, [[0, 'whoosh', { f0: 400, f1: 2500, dur: 0.3, gain: 0.4 }], [0, 'typing', { dur: len, rate: 18, gain: 0.7, pan: 0.6 }], ...b.cues, [b.at.m6 + 0.6, 'sparkle'], [b.at.m6 + 1.2, 'ping', { n: 3, gap: 0.3, gain: 0.6 }]]);
@@ -302,11 +334,12 @@ const plan = ctx => { ctx.save(); ctx.translate(30, -6); st.archDiagram(ctx, 0, 
     ctx.save(); cam(ctx, 1000, 560, 1.12);
     st.office(ctx, t, { board: 1 });
     st.clockFace(ctx, 820, 300, 64, lt * 9);
+    fx.sfxText(ctx, 'TICK TOCK!', 820, 180, 0.5, { size: 46, fill: '#ffd23f', rot: Math.sin(t * 8) * 0.1 });
     st.dashboard(ctx, 1170, 210, 420, 300, t, { servers: 5, lb: 1, bars: 0.4 + 0.6 * seg(lt, 0, len) });
     const nod = Math.max(0, Math.sin(lt * 4)) * 0.8;
     pp(ctx, 'smei', t, { x: 1000, y: 930, s: 1.0, facing: 0.05, pose: 'hold', hold: [null, 'tea'], expr: 'proud', nod });
-    pp(ctx, 'devit', t, { x: 720, y: 1100, s: 1.15, facing: 0.15, pose: 'type', sit: true, expr: 'determined' });
-    pp(ctx, 'nimith', t, { x: 1290, y: 1100, s: 1.12, facing: -0.15, pose: 'type', sit: true, expr: 'calm' });
+    pp(ctx, 'devit', t, { x: 720, y: 1010, s: 1.2, facing: 0.15, pose: 'type', sit: true, expr: 'determined' });
+    pp(ctx, 'nimith', t, { x: 1290, y: 1120, s: 1.05, facing: -0.15, pose: 'type', sit: true, expr: 'calm' });
     // shared desk + laptop lids (backs toward us)
     poly(ctx, [[300, 960], [1700, 960], [1760, 1010], [240, 1010]]); paint(ctx, st.S.desk, 5); rrect(ctx, 240, 1010, 1520, 200, 6); paint(ctx, st.S.deskD, 5);
     for (const lx of [720, 1290]) { poly(ctx, [[lx - 110, 965], [lx + 110, 965], [lx + 98, 885], [lx - 98, 885]]); paint(ctx, '#d9dde8', 5); st.nhamLogo(ctx, lx, 925, 0.22); }
@@ -332,9 +365,13 @@ const plan = ctx => { ctx.save(); ctx.translate(30, -6); st.archDiagram(ctx, 0, 
     ctx.save(); cam(ctx, 960, 560, 1);
     st.sunsetSky(ctx, { horizon: 900, t, sunY: 420 });
     st.shophouses(ctx, t * 260);
-    st.rider(ctx, lerp(-200, 1500, lt / len1), 1010, 1.25, t);
+    const rx = lerp(-200, 1500, lt / len1);
+    fx.speedStreaks(ctx, rx - 220, 820, 360, 260, t, { n: 6, dir: -1, alpha: 0.7 });
+    st.rider(ctx, rx, 1010, 1.25, t);
+    fx.dust(ctx, rx - 180, 1000, (lt * 2.5) % 1, { n: 4, spread: 140, r: 34, seed: Math.floor(lt * 2.5) });
+    fx.sfxText(ctx, 'ZOOM!', rx + 120, 560, seg(lt, 0.2, 1.4), { size: 90, fill: '#ffd23f', rot: -0.1 });
     ctx.restore();
-  }, [...n6.cues, [0, 'motorbike', { dur: len1, gain: 0.35 }], [0, 'city_amb', { dur: len1 + len2 }]]);
+  }, [...n6.cues, [0, 'motorbike', { dur: len1, gain: 0.35 }], [0.4, 'honk'], [0, 'city_amb', { dur: len1 + len2 }]]);
   const cust = { ...CAST.nimith, shirt: '#ffb3c1', shirtD: '#f39aab', collar: '#ffd0da', glasses: false, hairStyle: 'ponytail', tie: '#9fe3c9', H: 360, sw: 38, ww: 32, eyeSize: 1.05 };
   const kid = { ...CAST.devit, shirt: '#9fe3c9', shirtD: '#7fcfb2', collar: '#c4f3e1', headphones: false, H: 250, style: 'shirt' };
   take(len2, (ctx, lt, t) => {
@@ -343,6 +380,7 @@ const plan = ctx => { ctx.save(); ctx.translate(30, -6); st.archDiagram(ctx, 0, 
     st.shophouses(ctx, 410);
     st.rider(ctx, 620, 1010, 1.15, 0, {});
     const give = seg(lt, 0.3, 0.9);
+    fx.sfxText(ctx, 'YUM!', 1440, 380, seg(lt, 0.9, 2.2), { size: 90, fill: '#ff8c6b', rot: 0.1, wob: 3 });
     pp(ctx, cust, t, { x: 1120, y: 960, s: 1.0, facing: -0.4, pose: give < 1 ? 'reach' : 'thumbs', reach: [-90, -250], expr: 'grin' });
     pp(ctx, kid, t, { x: 1300, y: 960, s: 1.0, facing: -0.2, pose: 'cheer', expr: 'laugh' });
     // the delivery bag
@@ -359,9 +397,12 @@ const plan = ctx => { ctx.save(); ctx.translate(30, -6); st.archDiagram(ctx, 0, 
     st.office(ctx, t, { board: 1 });
     pp(ctx, 'smei', t, { x: 1400, y: 950, s: 0.95, facing: -0.3, pose: 'hold', hold: [null, 'tea'], expr: 'proud' });
     const hf = lt > 0.55;
-    pp(ctx, 'devit', t, { x: 860, y: 1090, s: 1.3, facing: 0.7, pose: 'highfive', hold: ['coffee', null], expr: hf ? 'laugh' : 'grin', sq: hf ? wobble(lt - 0.55, 3, 6) * 0.04 : 0 });
-    pp(ctx, 'nimith', t, { x: 1123, y: 1080, s: 1.28, facing: 0.7, pose: 'highfive', expr: hf ? 'laugh' : 'grin', mirror: true });
-    if (hf) fx.impact(ctx, 995, 575, 80, seg(lt, 0.55, 1.4), { col: '#ffd98a' });
+    const dvo = { x: 840, y: 1060, s: 1.4, facing: 0.7, pose: 'highfive' }, hand = anchors('devit', dvo).handR;
+    const nmo = { x: 1190, y: 1080, s: 1.2, facing: -0.6, pose: 'reachL' };
+    const meet = ease.out(seg(lt, 0.15, 0.55)), nh = localOf('nimith', nmo, hand);
+    pp(ctx, 'devit', t, { ...dvo, hold: ['coffee', null], expr: hf ? 'laugh' : 'grin', sq: hf ? wobble(lt - 0.55, 3, 6) * 0.1 : 0 });
+    pp(ctx, 'nimith', t, { ...nmo, reach: [lerp(-90, nh[0], meet), lerp(-120, nh[1], meet)], expr: hf ? 'laugh' : 'grin', sq: hf ? wobble(lt - 0.55, 3, 6) * 0.08 : 0 });
+    if (hf) fx.impact(ctx, hand[0], hand[1] - 20, 120, seg(lt, 0.55, 1.5), { word: 'POW!', size: 70, col: '#ffd23f', wcol: '#ff5c8a' });
     ctx.restore();
     st.confetti(ctx, t, { n: 50, seed: 5 });
   }, [[0.55, 'highfive'], [0.6, 'sparkle']]);
@@ -384,9 +425,9 @@ function roofFront(ctx, t, o = {}) {
   st.nightSky(ctx, t, { horizon: 900 });
   ctx.save(); ctx.translate(960, 900); ctx.scale(0.62, 0.62); ctx.translate(-1100, -880); ctx.globalAlpha = 0.9; st.skyline(ctx, t, { night: 1 }); ctx.restore();
   rrect(ctx, -400, 880, 2800, 400, 4); paint(ctx, '#7c7398', 0);
-  pp(ctx, 'devit', t, { x: 620, y: 1150, s: 1.15, sit: true, pose: 'sitTalk', hold: ['coffee', null], facing: 0.5, expr: 'smile', ...o.devit });
-  pp(ctx, 'smei', t, { x: 960, y: 1150, s: 1.2, sit: true, pose: 'sitTalk', hold: [null, 'tea'], facing: 0, expr: 'calm', ...o.smei });
-  pp(ctx, 'nimith', t, { x: 1300, y: 1150, s: 1.12, sit: true, pose: 'sitTalk', facing: -0.5, expr: 'smile', ...o.nimith });
+  pp(ctx, 'devit', t, { x: 620, y: 1050, s: 1.22, sit: true, pose: 'sitTalk', hold: ['coffee', null], facing: 0.5, expr: 'smile', ...o.devit });
+  pp(ctx, 'smei', t, { x: 960, y: 1110, s: 1.2, sit: true, pose: 'sitTalk', hold: [null, 'tea'], facing: 0, expr: 'calm', ...o.smei });
+  pp(ctx, 'nimith', t, { x: 1300, y: 1190, s: 1.08, sit: true, pose: 'sitTalk', facing: -0.5, expr: 'smile', ...o.nimith });
   rrect(ctx, -400, 960, 2800, 300, 6); paint(ctx, '#968cb2', 5);
   for (let x = -400; x < 2400; x += 120) { ctx.beginPath(); ctx.moveTo(x, 960); ctx.lineTo(x, 1260); paint(ctx, null, 3, '#857ba3'); }
 }
