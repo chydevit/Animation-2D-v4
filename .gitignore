@@ -9,3 +9,7 @@ getaway-car/build/vox_km/*
 .DS_Store
 # downloaded reference video (not ours to publish)
 vidssave.com*
+# ...and the skill template's pre-made starter clip (the starter builds offline)
+!skills/comedy-cartoon-2d/template/build/
+skills/comedy-cartoon-2d/template/build/*
+!skills/comedy-cartoon-2d/template/build/vox/
