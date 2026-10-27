@@ -13,7 +13,8 @@ Coordinates are pixels, y down. Characters' origin is **feet / ground centre, fa
 7. Writing a new character
 
 ## 1. core.mjs
-- `W, H, FPS, INK ('#1d1520'), LW (7 = outline width)`, palette `C.*` (teal/orange/yellow city tones, `green*` reserved for
+- `W, H, FPS, INK, LW`: ink colour and outline width follow `film.json` `"style"` (`bold`: `#1d1520`, 7 px; `pastel`:
+  `#3b2d3b`, 5 px), palette `C.*` (teal/orange/yellow city tones, `green*` reserved for
   the hero prop so it pops, `red`/`blue` for sirens, skin tones, `navy`, `black`, `money`, `copBlue`, `sea`…).
 - Timing: `seg(t, a, b)` → 0..1 clamped; `lerp`, `clamp`; `ease.{in,out,inOut,in3,out3,back,elastic,bounce}`;
   `onTwos(t)` (holds every 2nd frame for character animation); `wobble(t, freq, damp)` (damped settle, 0 at t=0);
@@ -36,6 +37,18 @@ Coordinates are pixels, y down. Characters' origin is **feet / ground centre, fa
 - `perspStreet(ctx, t, {vpx, vpy, spd, h, z0, extra(pr)})`: head-on street with buildings racing past (low angle when `vpy`
   is low and `h` ~1). `pr(X, Y, Z)` projects a street point (road half-width 7, buildings at ±11) for placing things.
 - `radialLines(ctx, t, cx, cy)`: speed lines bursting from a point.
+
+## 2b. Dialogue timing + lip-sync (kit.mjs + vox.mjs)
+`take(len, draw, cues)` appends a shot at a running clock. `beats([0.5, 'id1', 0.3, 'id2'], start)` →
+`{cues, end, at}` lays lines out back to back using `lineDur(id)`: the real clip length after pause-tightening, or
+a text estimate until the clip exists. `talk(who, t)` gives mouth openness 0..1 during that character's lines.
+`node src/vox.mjs` (`npm run durations`) caches durations and lip envelopes; `npm run build` runs it first.
+See story.md.
+
+## 2c. people.mjs: natural-proportion people
+`person(ctx, lookOrKey, {x, y, s, facing, back, mirror, pose, expr, mouth, look, hold, nod, tilt, sq, sit, t})`.
+Its poses, expressions and props are listed in story.md §2. `chair`, `chairBack`, `teaCup`, `icedCoffee`,
+`marker`, `notebook`, `phone`. The outline width follows the film style.
 
 ## 3. chars.mjs: example cast (adapt or copy-modify for new characters)
 | function | options |

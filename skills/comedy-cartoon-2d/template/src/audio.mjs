@@ -90,6 +90,17 @@ function rhodes(notes, dur, vel = 1) {
   for (const m of notes) { const f = midi(m); for (let i = 0; i < b.length; i++) { const t = i / SR; let e = Math.exp(-t * 1.6) * Math.min(1, t * 300); if (t > dur) e *= Math.exp(-(t - dur) * 8); const I = 1.4 * Math.exp(-t * 4); b[i] += Math.sin(TAU * f * t + I * Math.sin(TAU * f * t)) * e * (1 + 0.15 * Math.sin(TAU * 4.5 * t)) * vel * 0.18; } }
   return b;
 }
+// soft synth pad (slow attack/release, filtered detuned saws)
+function pad(notes, dur, vel = 1, cutoff = 1100) {
+  const b = buf(dur + 1.0), lp = new Biquad('lp', cutoff, 0.7);
+  const osc = notes.flatMap(m => [-8, 0, 7].map(c => ({ s: new Saw(), f: midi(m) * Math.pow(2, c / 1200) })));
+  for (let i = 0; i < b.length; i++) {
+    const t = i / SR; let e = Math.min(1, t / 0.6); if (t > dur) e *= Math.exp(-(t - dur) * 4);
+    let x = 0; for (const o of osc) x += o.s.n(o.f);
+    b[i] = lp.p(x / osc.length) * e * vel * 0.5;
+  }
+  return b;
+}
 function trombone(m0, m1, dur, { vel = 1, wah = 0 } = {}) {
   const b = buf(dur + 0.1), lp = new Biquad('lp', 900, 1.4), s = new Saw();
   for (let i = 0; i < b.length; i++) {
@@ -143,52 +154,9 @@ const grunt = (f0, vel = 1) => SFX.voiceSynth(0.42, k => f0 * (1.05 - 0.15 * k),
 const yawn = () => SFX.voiceSynth(1.15, k => 210 - 100 * k, [[750, 5, 450], [1200, 6, 800], [2600, 8, 2400, 0.3]], k => Math.sin(Math.PI * Math.min(1, k * 1.05)) * (k > 0.8 ? 0.5 : 1), 1.6);
 const sadTrombone = () => { const out = buf(1.9); [[63, 0, 0.32], [62, 0.34, 0.32], [61, 0.68, 0.32], [60, 1.02, 0.8]].forEach(([m, at, d], i) => { const n = trombone(m, i === 3 ? m - 0.6 : m, d, { vel: 0.8, wah: i === 3 ? 6 : 3.2 }); const o = Math.round(at * SR); for (let j = 0; j < n.length && o + j < out.length; j++) out[o + j] += n[j]; }); return out; };
 
-// ---------------------------------------------------------------- voices
-// voices/lines.json: { lang, translation, voices: {who: {design, sample, seed, fx, gain, pan, say}},
-//                      lines: {id: [who, text, translationText]}, seeds: {id: n} }
-// Each line is a VoxCPM2 clip in build/vox/<id>.wav, cloned from the locked voice voices/<who>.wav
-// (npm run voices). If a clip is missing and the voice has a `say` fallback, macOS `say` drafts it.
-const VCFG = fs.existsSync('voices/lines.json') ? JSON.parse(fs.readFileSync('voices/lines.json', 'utf8')) : { voices: {}, lines: {} };
-const LINES = VCFG.lines || {};
+// ---------------------------------------------------------------- voices (see vox.mjs)
+import { VCFG, LINES, samples } from './vox.mjs';
 const SPOKEN = []; // for subtitles
-// VoxCPM leaves long pauses at "!" / "។" and sometimes a breath after the last word:
-// shrink pauses over 0.22s to 0.15s, and drop a tail shorter than 0.2s that follows a long pause.
-function tightenPauses(x) {
-  const win = Math.round(0.01 * SR), nW = Math.floor(x.length / win), rms = new Float32Array(nW);
-  let mx = 0;
-  for (let w = 0; w < nW; w++) { let e = 0; for (let i = w * win; i < (w + 1) * win; i++) e += x[i] * x[i]; rms[w] = Math.sqrt(e / win); mx = Math.max(mx, rms[w]); }
-  const loud = w => rms[w] > mx * 0.03;
-  const runs = []; let st = -1;
-  for (let w = 0; w <= nW; w++) { const q = w < nW && !loud(w); if (q && st < 0) st = w; if (!q && st >= 0) { runs.push([st, w]); st = -1; } }
-  const keep = new Uint8Array(nW).fill(1);
-  for (const [a, bb] of runs) if (bb - a > 22 && a > 0) { for (let w = a + 8; w < bb - 7; w++) keep[w] = 0; if (bb >= nW - 20 || nW - bb < 20) for (let w = a + 8; w < nW; w++) keep[w] = 0; }
-  const out = []; for (let w = 0; w < nW; w++) if (keep[w]) for (let i = w * win; i < (w + 1) * win; i++) out.push(x[i]);
-  return Float32Array.from(out);
-}
-const VOICE_FX = {
-  intercom: ',highpass=f=500,lowpass=f=2800,acrusher=bits=8:mix=0.25',
-  radio: ',highpass=f=350,lowpass=f=3400,acompressor=threshold=0.1:ratio=6',
-  phone: ',highpass=f=300,lowpass=f=3000',
-};
-function voiceClip(name) {
-  const [who, text] = LINES[name], V = VCFG.voices[who] || {};
-  let wav = `build/vox/${name}.wav`;
-  fs.mkdirSync('build/vox', { recursive: true });
-  if (!fs.existsSync(wav)) {
-    if (!V.say) throw new Error(`missing ${wav}: run \`npm run voices\` (VoxCPM2), or give voice "${who}" a "say" fallback`);
-    wav = `build/vox/${name}.say.aiff`;
-    execFileSync('say', ['-v', V.say.voice || 'Samantha', '-r', String(V.say.rate || 180), '-o', wav, text]);
-    console.log(`(draft voice) ${name} via say`);
-  }
-  const raw = `build/vox/${name}.f32`;
-  const af = (V.say && wav.endsWith('.aiff') ? `asetrate=22050*${V.say.pitch || 1},` : '') + 'aresample=44100,highpass=f=70' + (VOICE_FX[V.fx] || '');
-  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', wav, '-af', af, '-f', 'f32le', '-ac', '1', '-ar', '44100', raw]);
-  const b = fs.readFileSync(raw);
-  const x = tightenPauses(new Float32Array(b.buffer, b.byteOffset, b.length / 4).slice());
-  let pk = 0; for (const v of x) pk = Math.max(pk, Math.abs(v));
-  for (let i = 0; i < x.length; i++) x[i] *= 0.85 / Math.max(pk, 1e-4);
-  return x;
-}
 
 // ---------------------------------------------------------------- SFX cue dispatch
 function playCue(c) {
@@ -263,6 +231,29 @@ function playCue(c) {
     case 'sad_trombone': case 'iris_close': mix('music', t, sadTrombone(), 0.75); break;
     case 'iris_snap': m(S.pop(1200, 300, 0.7), 0.6); break;
     case 'yawn': case 'v_cop_yawn': mix('vox', t, yawn(), 0.6, c.pan ?? -0.1); break;
+    // ---- office / tech / city
+    case 'typing': for (let k = 0; k < (c.dur || 1) * (c.rate || 14); k++) { const tt = t + k / (c.rate || 14) + rnd() * 0.03; mix('sfx', tt, S.click(1600 + rnd() * 1800, 0.8), 0.3 * (c.gain ?? 1), c.pan ?? 0.1); if (rnd() < 0.08) mix('sfx', tt, S.wood(520, 0.6), 0.25, 0.1); } break;
+    case 'ping': for (let k = 0; k < (c.n || 1); k++) mix('sfx', t + k * (c.gap || 0.18), S.bell(k % 2 ? 1760 : 2093, 0.5, 0.6), 0.35 * (c.gain ?? 1), (rnd() - 0.5) * 0.8); break;
+    case 'error_buzz': for (let k = 0; k < 2; k++) { const b = buf(0.28), a = new Saw(), lp = new Biquad('lp', 1800); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = lp.p(Math.sign(a.n(118))) * 0.35 * Math.min(1, tt * 100) * Math.min(1, (0.28 - tt) * 40); } mix('sfx', t + k * 0.36, b, 0.7); } break;
+    case 'alarm_beep': for (let k = 0; k < (c.n || 4); k++) { const b = buf(0.12); for (let i = 0; i < b.length; i++) b[i] = Math.sign(Math.sin(TAU * 1040 * i / SR)) * 0.2 * Math.min(1, (0.12 - i / SR) * 50); mix('sfx', t + k * 0.24, b, 0.45, 0.2); } break;
+    case 'party_pop': m(S.pop(1800, 400, 1), 0.7); m(S.hiss(0.7, 1.6, 4000), 0.5); for (let k = 0; k < 10; k++) mix('sfx', t + 0.05 + rnd() * 0.6, S.click(3000 + rnd() * 3000, 0.5), 0.25, rnd() * 1.6 - 0.8); break;
+    case 'party_horn': { const b = buf(0.6), a = new Saw(), bp = new Biquad('bp', 1200, 2); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = bp.p(a.n(470 + 30 * Math.sin(TAU * 7 * tt))) * Math.min(1, tt * 30) * Math.min(1, (0.6 - tt) * 8) * 1.2; } m(b, 0.5, -0.3); break; }
+    case 'chime_success': [84, 88, 91, 96].forEach((n, k) => mix('sfx', t + k * 0.11, S.bell(midi(n), 1.4, 0.7), 0.45, -0.2 + k * 0.15)); break;
+    case 'highfive': m(S.hiss(0.05, 3, 1200), 0.9); m(S.thud(160, 0.7, 0.12), 0.6); [96, 100, 103].forEach((n, k) => mix('sfx', t + 0.05 + k * 0.05, xylo(n, 0.5), 0.35)); break;
+    case 'swivel': m(S.whoosh(500, 2200, 0.45, 0.9), 0.5); m(S.squeak(700, 900, 0.3, 0.6), 0.25); break;
+    case 'marker': for (let k = 0; k < (c.dur || 1) * 4; k++) mix('sfx', t + k * 0.25 + rnd() * 0.05, S.squeak(2100 + rnd() * 500, 2500 + rnd() * 400, 0.16, 0.5), 0.18, -0.2); break;
+    case 'footsteps': for (let k = 0; k < (c.n || 4); k++) { mix('sfx', t + k * (c.gap || 0.45), S.thud(140, 0.4, 0.12), 0.45, (k % 2) * 0.3 - 0.15); mix('sfx', t + k * (c.gap || 0.45), S.wood(380, 0.4), 0.2); } break;
+    case 'sip': { const b = buf(0.45), bp = new Biquad('bp', 1100, 4); for (let i = 0; i < b.length; i++) { const tt = i / SR; if (i % 64 === 0) bp.set(900 + 900 * tt / 0.45, 4); b[i] = bp.p(noise()) * Math.sin(Math.PI * tt / 0.45) * (0.6 + 0.4 * Math.sin(TAU * 30 * tt)) * 1.5; } m(b, 0.4); break; }
+    case 'page_flip': m(S.whoosh(1500, 5000, 0.18, 1, 0.8), 0.5); m(S.hiss(0.12, 1, 3000), 0.3); break;
+    case 'whoosh': m(S.whoosh(c.f0 || 400, c.f1 || 2500, c.dur || 0.35), c.gain ?? 0.5, c.pan || 0); break;
+    case 'sparkle': [91, 95, 98, 103].forEach((n, k) => mix('sfx', t + k * 0.06, xylo(n, 0.5), 0.3, 0.3)); break;
+    case 'motorbike': m(S.engine(c.dur || 2, 95, 120, 0.8, 0.4), (c.gain ?? 0.4), c.pan || 0); break;
+    case 'city_amb': { const d = c.dur || 5, b = buf(d), lp = new Biquad('lp', 300); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = lp.p(noise()) * 1.4 * Math.min(1, tt) * Math.min(1, d - tt); } m(b, 0.35); for (let k = 0; k < d / 2.2; k++) mix('sfx', t + 0.8 + k * 2.2 + rnd(), S.engine(0.9, 80 + rnd() * 30, 100, 0.4, 0.2), 0.12, rnd() * 1.6 - 0.8); break; }
+    case 'room_tone': { const d = c.dur || 5, b = buf(d), lp = new Biquad('lp', 500); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = (lp.p(noise()) * 0.6 + Math.sin(TAU * 120 * tt) * 0.02) * Math.min(1, tt * 2) * Math.min(1, (d - tt) * 2); } m(b, 0.25); break; }
+    case 'night_amb': m(S.cricket(c.dur || 6), 0.45, 0.4); mix('sfx', t + 0.3, S.cricket((c.dur || 6) - 0.3), 0.3, -0.4); { const d = c.dur || 6, b = buf(d), lp = new Biquad('lp', 220); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = lp.p(noise()) * 1.2 * Math.min(1, tt) * Math.min(1, d - tt); } m(b, 0.25); } break;
+    case 'clock_fast': for (let tt = 0, k = 0; tt < (c.dur || 2); k++) { mix('sfx', t + tt, S.click(k % 2 ? 1800 : 2600, 0.8), 0.35); tt += Math.max(0.05, 0.3 - tt * 0.12); } break;
+    case 'server_hum': { const d = c.dur || 3, b = buf(d), hp = new Biquad('bp', 900, 1); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = (Math.sin(TAU * 60 * tt) * 0.2 + Math.sin(TAU * 120 * tt) * 0.1 + hp.p(noise()) * 0.25) * Math.min(1, tt * 3) * Math.min(1, (d - tt) * 3); } m(b, 0.35); break; }
+    case 'nod': m(S.wood(700, 0.4), 0.15); break;
     case 'sting_title': mix('music', t, brass([50, 57, 62, 65, 69].map(n => n + (c.key || 0)), 0.5, { vel: 1 }), 0.6); mix('music', t, crash(0.8, 1.8), 0.4); mix('music', t, kick(1), 0.5); break;
     case 'ta_da': mix('music', t, brass([50, 57, 62, 66, 69, 74].map(n => n + (c.key || 0)), 1.1, { vel: 1 }), 0.7); mix('music', t, crash(1, 2.4), 0.5); mix('music', t, kick(1), 0.6); mix('music', t, bassNote(midi(38 + (c.key || 0)), 1.0), 0.9); break;
     case 'heave_hit': { const i = c.i || 0, lead = c.lead ?? 0.4; mix('music', t - lead, bassNote(midi(26 + i), 0.3, 1), 0.9); mix('music', t - lead, tom(80, 0.8), 0.5); mix('music', t, brass([50 + i, 57 + i, 62 + i], 0.35, { vel: 0.9, bright: 0.8 }), 0.55); mix('music', t, snare(0.8), 0.4); break; }
@@ -275,7 +266,7 @@ function playCue(c) {
     case 'end_button': mix('music', t, brass([50, 57, 62, 65, 69], 0.18, { vel: 1 }), 0.6); mix('music', t, kick(1), 0.5); mix('music', t + 0.36, brass([50, 57, 62, 65, 69], 0.5, { vel: 1 }), 0.65); mix('music', t + 0.36, kick(1), 0.5); mix('music', t + 0.36, crash(0.7, 1.5), 0.35); mix('music', t + 0.36, bassNote(midi(38), 0.5), 0.8); break;
     default:
       if (LINES[c.name]) {
-        const [who, text, tr] = LINES[c.name], V = VCFG.voices[who] || {}, clip = fadeEdges(voiceClip(c.name));
+        const [who, text, tr] = LINES[c.name], V = VCFG.voices[who] || {}, clip = fadeEdges(samples(c.name));
         mix('vox', t, clip, V.gain ?? 0.95, V.pan ?? 0);
         SPOKEN.push({ t, dur: clip.length / SR, who, text, tr });
       } else UNKNOWN.add(c.name);
@@ -343,6 +334,68 @@ const STYLES = {
     sec.put(0, tr, 0.6);
     return sec;
   },
+  // gentle styles for story films (F/C major, roneat-style pentatonic xylophone lines)
+  warm(len, { bpm = 84, key = 0, melody = true } = {}) {
+    const beat = 60 / bpm, sec = section(len), bar = beat * 4;
+    const prog = [[41, [57, 60, 64, 65]], [38, [57, 60, 62, 65]], [46, [57, 62, 65, 69]], [36, [58, 60, 64, 67]]];
+    const mel = [[0, 81], [1.5, 84], [2, 86], [3, 84], [4.5, 81], [5, 79], [6, 77], [8, 79], [9.5, 81], [10, 84], [12, 86], [13, 84], [14, 81], [15.5, 79]];
+    for (let k = 0; k * bar < len; k++) {
+      const [r, v] = prog[k % 4], tb = k * bar;
+      sec.put(tb, rhodes(v.map(n => n + key), beat * 1.6, 0.8), 0.45, 0.2); sec.put(tb + beat * 2.5, rhodes(v.map(n => n + key), beat * 1.2, 0.5), 0.3, 0.2);
+      sec.put(tb, bassNote(midi(r + key), beat * 1.8, 0.6), 0.5); sec.put(tb + beat * 2, bassNote(midi(r + 7 + key), beat * 1.6, 0.45), 0.45);
+      for (let e = 0; e < 8; e++) sec.put(tb + e * beat / 2, hat(e % 2 ? 0.25 : 0.4, 0.03), 0.12, 0.3);
+      if (melody && k % 4 >= 2) for (const [b, n] of mel) if (b >= (k % 2) * 8 && b < (k % 2) * 8 + 8) sec.put(tb + (b - (k % 2) * 8) * beat / 2, xylo(n + key, 0.55), 0.3, -0.2);
+    }
+    return sec;
+  },
+  upbeat(len, { bpm = 112, key = 0 } = {}) {
+    const beat = 60 / bpm, sec = section(len), bar = beat * 4;
+    const prog = [[48, [60, 64, 67, 72]], [43, [59, 62, 67, 71]], [45, [60, 64, 69, 72]], [41, [60, 65, 69, 72]]];
+    for (let k = 0; k * bar < len; k++) {
+      const [r, v] = prog[k % 4], tb = k * bar;
+      for (let e = 0; e < 8; e++) sec.put(tb + e * beat / 2, xylo(v[[0, 1, 2, 3, 2, 1, 2, 3][e]] + 12 + key, 0.5), 0.28, 0.15);
+      for (let q = 0; q < 4; q++) { sec.put(tb + q * beat, bassNote(midi(r + key + (q === 2 ? 7 : 0)), beat * 0.6, 0.7), 0.55); if (q % 2 === 0) sec.put(tb + q * beat, kick(0.6), 0.45); else sec.put(tb + q * beat, snare(0.5, 230), 0.3, 0.05); }
+      for (let e = 0; e < 8; e++) sec.put(tb + e * beat / 2, hat(0.35, 0.03), 0.16, 0.3);
+    }
+    return sec;
+  },
+  build(len, { bpm = 120, key = 0 } = {}) {
+    const beat = 60 / bpm, sec = section(len), s16 = beat / 4, notes = [57, 60, 64, 60, 69, 64, 60, 64];
+    for (let k = 0; k * s16 < len; k++) {
+      const tt = k * s16, ramp = 0.35 + 0.65 * (tt / len);
+      sec.put(tt, xylo(notes[k % 8] + key, 0.45 * ramp), 0.3, (k % 2) * 0.3 - 0.15);
+      if (k % 4 === 0) { sec.put(tt, kick(0.7 * ramp), 0.5); sec.put(tt, bassNote(midi(45 + key + ([0, 0, 3, 5][Math.floor(k / 32) % 4])), beat * 0.8, 0.7), 0.5); }
+      if (k % 8 === 4) sec.put(tt, snare(0.5 * ramp, 220), 0.3);
+      if (k % 2 === 1) sec.put(tt, hat(0.4 * ramp, 0.025), 0.15, 0.3);
+    }
+    for (let b = 0; b * beat * 8 < len; b++) sec.put(b * beat * 8, pad([57, 60, 64].map(n => n + key + [0, 0, 3, 5][b % 4]), beat * 7.5, 0.5, 700 + 900 * (b * beat * 8 / len)), 0.35);
+    return sec;
+  },
+  triumph(len, { bpm = 120, key = 0 } = {}) {
+    const beat = 60 / bpm, sec = section(len), bar = beat * 4;
+    const prog = [[48, [60, 64, 67, 72]], [43, [62, 67, 71, 74]], [45, [64, 69, 72, 76]], [41, [65, 69, 72, 77]]];
+    for (let k = 0; k * bar < len; k++) {
+      const [r, v] = prog[k % 4], tb = k * bar;
+      sec.put(tb, brass(v.map(n => n + key), beat * 1.4, { vel: 0.85, bright: 0.9 }), 0.4, 0.1); sec.put(tb + beat * 2.5, brass(v.map(n => n + key), beat * 0.4, { vel: 0.7 }), 0.3, 0.1);
+      if (k % 4 === 0) sec.put(tb, crash(0.6, 1.6), 0.3, -0.3);
+      for (let q = 0; q < 4; q++) { sec.put(tb + q * beat, bassNote(midi(r + key), beat * 0.7, 0.8), 0.6); sec.put(tb + q * beat, q % 2 ? snare(0.6) : kick(0.8), q % 2 ? 0.35 : 0.5); }
+      for (let e = 0; e < 8; e++) sec.put(tb + e * beat / 2, xylo(v[e % 4] + 24 + key, 0.3), 0.2, -0.2);
+    }
+    return sec;
+  },
+  tender(len, { bpm = 72, key = 0 } = {}) {
+    const beat = 60 / bpm, sec = section(len), bar = beat * 4;
+    const prog = [[41, [57, 60, 64]], [45, [57, 60, 64]], [46, [58, 62, 65]], [48, [55, 60, 64]]];
+    const mel = [81, 79, 77, 79, 81, 84, 81, 79];
+    for (let k = 0; k * bar < len; k++) {
+      const [r, v] = prog[k % 4], tb = k * bar;
+      sec.put(tb, pad(v.map(n => n + key), bar * 0.95, 0.7, 900), 0.4, 0);
+      sec.put(tb, bassNote(midi(r + key), bar * 0.9, 0.5), 0.4);
+      [0, 1, 2, 1].forEach((ix, q) => sec.put(tb + q * beat, rhodes([v[ix] + 12 + key], beat * 0.9, 0.5), 0.3, 0.25));
+      if (k % 2 === 1) [0, 1.5, 2, 3].forEach((b, q) => sec.put(tb + b * beat, xylo(mel[(k * 4 + q) % 8] + key, 0.45), 0.28, -0.2));
+    }
+    return sec;
+  },
   vamp(len, { bpm = 188, key = 0 } = {}) {
     const beat = 60 / bpm, sec = section(len);
     for (let k = 0; k * beat < len - 0.05; k++) { const tt = k * beat; sec.put(tt, bassNote(midi([38, 42, 45, 47][k % 4] + key), beat * 0.8, 0.8), 0.7); sec.put(tt, ride(0.6), 0.25, 0.35); if (k % 2) sec.put(tt, snare(0.5), 0.3); if (k % 4 === 1) sec.put(tt + beat * 0.667, brass(CH.D.v.map(n => n + key), beat * 0.4, { vel: 0.8 }), 0.35); }
@@ -395,10 +448,16 @@ reverb(...BUS.music, 0.16); reverb(...BUS.sfx, 0.08);
 const out = new Int16Array(N * 2);
 let peak = 0;
 const ML = new Float32Array(N), MR = new Float32Array(N);
+// film.json "mix": { "music": 0.5, "sfx": 0.75, "voice": 1.1, "duck": 1 }. duck < 1 dips the music to that
+// fraction while anyone speaks (smooth sidechain), so story films can play music fuller between lines.
+const MIX = (() => { try { return { music: 0.5, sfx: 0.75, voice: 1.1, duck: 1, ...(JSON.parse(fs.readFileSync('film.json', 'utf8')).mix || {}) }; } catch { return { music: 0.5, sfx: 0.75, voice: 1.1, duck: 1 }; } })();
+const duckEnv = new Float32Array(N);
+{ let e = 0; const att = Math.exp(-1 / (0.03 * SR)), rel = Math.exp(-1 / (0.45 * SR)); // fast down, slow back up
+  for (let i = 0; i < N; i++) { const v = Math.min(1, (Math.abs(BUS.vox[0][i]) + Math.abs(BUS.vox[1][i])) * 6); e = v > e ? v + (e - v) * att : v + (e - v) * rel; duckEnv[i] = e; } }
 for (let i = 0; i < N; i++) {
-  // duck music + sfx a touch under dialogue
-  ML[i] = BUS.music[0][i] * 0.5 + BUS.sfx[0][i] * 0.75 + BUS.vox[0][i] * 1.1;
-  MR[i] = BUS.music[1][i] * 0.5 + BUS.sfx[1][i] * 0.75 + BUS.vox[1][i] * 1.1;
+  const mg = MIX.music * (1 - (1 - MIX.duck) * Math.min(1, duckEnv[i] * 1.5));
+  ML[i] = BUS.music[0][i] * mg + BUS.sfx[0][i] * MIX.sfx + BUS.vox[0][i] * MIX.voice;
+  MR[i] = BUS.music[1][i] * mg + BUS.sfx[1][i] * MIX.sfx + BUS.vox[1][i] * MIX.voice;
   peak = Math.max(peak, Math.abs(ML[i]), Math.abs(MR[i]));
 }
 const g = 0.9 / Math.max(peak, 1e-6);

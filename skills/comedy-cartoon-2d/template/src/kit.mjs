@@ -1,6 +1,7 @@
 // Shot machinery shared by every film: the shot registry, camera, shake, a title card,
 // a head-on perspective street, radial speed lines, and the frame/cue entry points.
-import { W, H, C, INK, TAU, paint, poly, text, lerp, seg, ease, hash } from './core.mjs';
+import { W, H, C, INK, TAU, paint, poly, text, lerp, seg, ease, hash, onTwos } from './core.mjs';
+import { LINES, lineDur, meta } from './vox.mjs';
 import * as bg from './bg.mjs';
 import * as fx from './fx.mjs';
 
@@ -28,6 +29,31 @@ export function allCues() {
   for (const s of SHOTS) for (const [lt, name, opts] of s.cues) out.push({ t: s.a + lt, name, ...(opts || {}) });
   return out.sort((a, b) => a.t - b.t);
 }
+
+// ---------------------------------------------------------------- dialogue-driven timing + lip-sync
+// take(len, draw, cues): append a shot at the running clock (story films: lengths come from the voices).
+let CLOCK = 0;
+export const take = (len, draw, cues = []) => { shot(CLOCK, CLOCK + len, draw, cues); CLOCK += len; };
+export const clock = () => CLOCK;
+// beats(['d1', 0.3, 'd2'], start): lines back to back with gaps (seconds). -> { cues, end, at: {id: start} }
+export function beats(items, start = 0) {
+  let t = start; const cues = [], at = {};
+  for (const it of items) { if (typeof it === 'number') t += it; else { at[it] = t; cues.push([t, it]); t += lineDur(it); } }
+  return { cues, end: t, at };
+}
+// talk(who, t): mouth openness 0..1 at film time t (from the clip's loudness; a flap before the clip exists)
+let SPEECH = null;
+export function talk(who, t) {
+  if (!SPEECH) SPEECH = allCues().filter(c => LINES[c.name]).map(c => ({ t: c.t, id: c.name, who: LINES[c.name][0], d: lineDur(c.name) }));
+  for (const s of SPEECH) {
+    if (s.who !== who || t < s.t || t >= s.t + s.d) continue;
+    const lt = onTwos(t - s.t), m = meta(s.id);
+    if (m) return m.env[Math.min(m.env.length - 1, Math.floor(lt * 24))] || 0;
+    return Math.max(0, Math.sin(lt * 26)) * 0.8;
+  }
+  return 0;
+}
+export const speaking = (who, t) => talk(who, t) > 0 || (SPEECH || []).some(s => s.who === who && t >= s.t && t < s.t + s.d);
 
 // ---------------------------------------------------------------- camera
 // cam(ctx, cx, cy, zoom, rot): world point (cx, cy) lands in the frame centre.

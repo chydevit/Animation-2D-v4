@@ -1,10 +1,13 @@
 // Shared drawing + timing helpers: palette, easing, ink/fill/cel-shade primitives, rubber-hose limbs, IK, lettering.
 import { GlobalFonts } from '@napi-rs/canvas';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 
 export const W = 1920, H = 1080, FPS = 24;
-export const INK = '#1d1520';
-export const LW = 7;
+// film.json "style": "bold" (default: TV-cartoon ink + 7 px lines) or "pastel" (soft plum ink, 5 px clean lines)
+const STYLE = (() => { try { return JSON.parse(fs.readFileSync('film.json', 'utf8')).style || 'bold'; } catch { return 'bold'; } })();
+export const INK = STYLE === 'pastel' ? '#3b2d3b' : '#1d1520';
+export const LW = STYLE === 'pastel' ? 5 : 7;
 
 GlobalFonts.registerFromPath('/System/Library/Fonts/Supplemental/Impact.ttf', 'Impact');
 GlobalFonts.registerFromPath('/System/Library/Fonts/Supplemental/Arial Black.ttf', 'Arial Black');

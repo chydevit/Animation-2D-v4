@@ -1,8 +1,10 @@
 # Animation-2D-v4
 
 **Getaway Car**: a 90-second comedy cartoon with Khmer dialogue, drawn completely in code, plus the
-**comedy-cartoon-2d** skill that lets [Claude Code](https://claude.com/claude-code) make new cartoons like it from a
-short description.
+**comedy-cartoon-2d** skill that lets [Claude Code](https://claude.com/claude-code) make new cartoons from a short
+description: slapstick comedies like this one, and story videos where characters talk, with lip-sync and a narrator.
+The skill includes two finished examples with their videos: *Getaway Car* (comedy) and *Bong Smei, Bong Nimith &
+Devit* (a 2.5-minute Khmer story about a Phnom Penh tech team).
 
 | path | what |
 |---|---|
@@ -54,12 +56,21 @@ account or internet needed after that.
 skip this step.)
 
 ### Step 4: ask Claude for a cartoon
-Open Claude Code in an empty folder and describe your cartoon. Examples:
+Open Claude Code in an empty folder and type `/` to call the skill directly, then describe your cartoon after it:
+```
+/comedy-cartoon-2d a hungry cat tries to steal a fish from a market seller on a scooter, 60 seconds, Khmer voices
+```
+Typing `/` shows a menu of your skills; start typing `comedy` and press **Tab** or **Enter** to pick it.
+
+You can also just describe your cartoon without the `/` and Claude will pick the skill by itself. Examples:
 
 - *"Make a funny 60-second cartoon: a hungry cat tries to steal a fish from a market seller on a scooter. Khmer voices."*
 - *"Make a new Getaway Car episode: Benny and Marge try to rob an ice-cream truck, and the bike cop is the ice-cream man."*
+- *"Make a 2-minute Khmer story: a grandmother teaches her grandson to cook amok. Narrator plus two voices."*
 - Paste a full build prompt (characters, story beats with times, camera, sound, colours), like
-  [the Getaway Car prompt](skills/comedy-cartoon-2d/examples/getaway-car/prompt.md).
+  [the Getaway Car prompt](skills/comedy-cartoon-2d/examples/getaway-car/prompt.md) or
+  [the team story prompt](skills/comedy-cartoon-2d/examples/team-story/prompt.md).
+- Add *"use the Getaway Car look"* for thick black outlines and bright colours, or *"soft pastel"* for a gentler style.
 
 Claude will then:
 1. write a **shot list** (every shot, with times and gags) and show it to you
@@ -69,7 +80,9 @@ Claude will then:
 5. add the **music** (jazzy chase score) and **cartoon sound effects** (boing, honk, skid, slide whistle…)
 6. build the final video with subtitles
 
-You get `film/<title>.mp4`, the subtitle `.srt` files, and check images in `film/qc/`.
+You get `film/<title>.mp4` (with its cover embedded as the thumbnail), the cover images `film/cover.png` and
+`film/cover_1280.jpg`, the subtitle `.srt` files, and check images in `film/qc/`. Claude also checks every Khmer
+voice line with Khmer Whisper and re-records unclear ones.
 
 **How long?** The drawing and rendering take minutes. Voices are the slow part: about 2 minutes to load the model,
 then 10–60 seconds per line. A 90-second cartoon with ~15 lines takes roughly **30–60 minutes** in total.
@@ -89,7 +102,8 @@ Claude knows the project structure and rebuilds only what's needed.
 The skill is also a normal Node project you can edit by hand:
 ```sh
 ~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh my-cartoon                         # 9 s starter film
-~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh my-cartoon --example getaway-car   # the full example
+~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh my-cartoon --example getaway-car   # the comedy example
+~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh my-cartoon --example team-story    # the story example
 cd my-cartoon
 ```
 | command | what it does |
@@ -97,7 +111,9 @@ cd my-cartoon
 | `npm run stills -- 1.5 4 8` | render pictures at those seconds (fast check) → `build/stills/` |
 | `npm run sheet` | character model sheet |
 | `npm run voices` | make missing voice clips with VoxCPM2 |
-| `npm run build` | render video + music/SFX/voices + subtitles → `film/` |
+| `npm run asr` | check every Khmer voice line with Khmer Whisper |
+| `npm run cover` | make the cover / thumbnail |
+| `npm run build` | render video + music/SFX/voices + subtitles + cover → `film/` |
 
 Where things live:
 - `src/shots.mjs`: the film (every shot, camera and sound cue)
@@ -124,7 +140,7 @@ The Khmer voice clips are included, so this works without the voice engine (abou
 |---|---|
 | `VoxCPM2 python not found` | do Step 3, then open a new terminal (or set `VOX_PY` to a Python that has `voxcpm` installed) |
 | `missing build/vox/....wav` | run `npm run voices` |
-| Claude doesn't use the skill | check `~/.claude/skills/comedy-cartoon-2d/SKILL.md` exists, restart Claude Code, or say "use the comedy-cartoon-2d skill" |
+| Claude doesn't use the skill | start your message with `/comedy-cartoon-2d`; if it's not in the `/` menu, check `~/.claude/skills/comedy-cartoon-2d/SKILL.md` exists and restart Claude Code |
 | a voice says a word wrong | ask Claude to re-roll that line, or change its spelling a little |
 | `ffmpeg: command not found` | `brew install ffmpeg` |
 

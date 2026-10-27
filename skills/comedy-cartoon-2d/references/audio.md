@@ -16,6 +16,11 @@ the dialogue timeline plus warnings for **overlapping lines** and **unknown cue 
 | `muzak` | quiet bossa e-piano (lobbies, drive-throughs, waiting) | `bpm` 112 |
 | `tension` | low pulses that accelerate + tremolo cluster crescendo | `key` |
 | `vamp` | happy major vamp (celebration) | `bpm` |
+| `warm` | e-piano chords + soft bass/shaker + roneat-style pentatonic xylophone (cozy openings, introductions) | `bpm` 84, `melody: false` |
+| `upbeat` | marimba arpeggios + light kick/snare (energetic character intros) | `bpm` 112 |
+| `build` | driving 16th ostinato with rising filter + kick (work montages, racing the clock) | `bpm` 120 |
+| `triumph` | brass chords + drums + sparkle (launches, success) | `bpm` 120 |
+| `tender` | pads + e-piano arpeggio + pentatonic melody (heartfelt endings, night scenes) | `bpm` 72 |
 
 `how`: `'cut'` (40 ms), `'fade'` + `dur`, `'tapestop'` + `dur` (the record slows to a halt; great for running out of
 gas / a plan collapsing). Every section has `gain`. Cut the music for deadpan holds and big reveals: **silence is a gag**.
@@ -36,6 +41,8 @@ effort/push; i = step), `sad_trombone` (wah-wah-wah-waaah), `end_button` (jazzy 
 | bikes / bells | `bike_squeak {n, gap}`, `brake_squeak`, `bell` (bike bell ding), `register_ding` |
 | alarms | `siren {dur}` (wail), `siren_slow {dur}`, `alarm {dur}` (bank bell) |
 | body / voice FX | `gulp`, `heartbeat {n}`, `grunt {f0: 150 man / 225 woman / 320 kid, i, gain, pan}`, `yawn`, `munch {n}`, `scramble {dur}` (running feet), `drum_fingers {dur}` |
+| office / tech | `typing {dur, rate, gain, pan}`, `ping {n, gap}`, `error_buzz`, `alarm_beep {n}`, `server_hum {dur}`, `party_pop`, `party_horn`, `chime_success`, `highfive`, `swivel`, `marker {dur}`, `footsteps {n, gap}`, `sip`, `page_flip`, `clock_fast {dur}`, `sparkle`, `nod`, `whoosh {f0, f1, dur, gain}` |
+| ambience | `room_tone {dur}`, `city_amb {dur}`, `night_amb {dur}`, `motorbike {dur}`; one per shot with `dur: len` |
 | nature / misc | `quack {n, gap}` (mama + ducklings), `quack_small`, `gull {n}`, `cricket {dur}` (awkward silence), `flutter {dur}` (paper/money), `snatch`, `zip_rope`, `lid_wobble`, `needle_drop`, `record_scratch`, `drumroll {dur}`, `blink`, `iris_snap` |
 
 Sync SFX to the frame of contact (the impact frame, not the anticipation). Put a `whoosh`/`zip` under every smear.
@@ -46,6 +53,10 @@ happens; `npm run audio` reports each line's real start and length, so adjust cu
 overlaps.
 
 ## Mix
+`film.json` `"mix": {"music": 0.5, "sfx": 0.75, "voice": 1.1, "duck": 1}` (these are the defaults, used by Getaway Car).
+`duck` below 1 turns on a smooth sidechain: the music dips to that fraction while anyone speaks and comes back
+between lines. Story films use `{"music": 0.95, "duck": 0.4}`, so music carries the quiet moments without
+covering dialogue.
 Buses: music ×0.5, sfx ×0.75, voice ×1.1, small reverb on music/sfx, tanh soft-clip, loudnorm -16 LUFS / -1.5 dBTP.
 Long continuous SFX (siren, alarm) are kept low (0.24–0.38) because they fatigue. To add a new sound, write a synth in
 `SFX` (or reuse `SFX.voiceSynth`, `SFX.slide`, `SFX.clang`, `SFX.whoosh`) and a `case` in `playCue`.

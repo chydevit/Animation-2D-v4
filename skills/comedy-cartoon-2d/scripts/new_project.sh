@@ -12,7 +12,7 @@ cp -R "$SKD/template/." "$DEST/"
 if [ "$2" = "--example" ]; then
   EX="$SKD/examples/$3"
   [ -d "$EX" ] || { echo "no example '$3' (have: $(ls "$SKD/examples"))" >&2; exit 1; }
-  cp "$EX/shots.mjs" "$DEST/src/shots.mjs"
+  cp "$EX/src/"*.mjs "$DEST/src/"   # shots.mjs + any film-specific modules (sets, extra cast)
   cp "$EX/film.json" "$DEST/film.json"
   cp "$EX/voices/"* "$DEST/voices/"
   rm -f "$DEST/build/vox/"*.wav; mkdir -p "$DEST/build/vox"

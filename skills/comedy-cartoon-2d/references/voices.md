@@ -17,6 +17,10 @@
 - `lang` is the spoken language (subtitle track 1); `translation` is the second subtitle track (third field of each line).
 - `fx`: `intercom` (drive-thru speaker), `radio`, `phone`. `gain`/`pan` per voice.
 - `seeds.<line>` re-rolls a single line that came out garbled.
+- Optional 4th field = the text actually spoken, when it must differ from the subtitle: `["smei", "ខ្ញុំជាគ្រូណែនាំ (Mentor)។",
+  "I'm the mentor.", "ខ្ញុំជាគ្រូណែនាំ Mentor។"]`. VoxCPM treats `(...)` as a voice instruction, so remove brackets
+  from spoken text. Also use it for respellings.
+- A narrator is just another voice (`"narrator": {design, sample, seed}`) whose lines move no mouth.
 - English film: `"lang": "en"`, write English lines, drop `translation` (or translate to `km`). VoxCPM2 speaks English
   too. For quick drafts without VoxCPM a voice may carry `"say": {"voice": "Samantha", "rate": 175, "pitch": 0.93}`
   (macOS TTS, English only, robotic); it is used only when the VoxCPM clip is missing.
@@ -49,3 +53,15 @@ breath after the last word. Khmer lines usually run **longer than English**. Aft
 timeline: if a line overlaps the next one or runs past its gag, move the next cue later, speed the exchange, or lengthen
 the shot with `setShift()` and trim time elsewhere (see craft.md). Match mouth/reaction timing in the shot (e.g. a
 speaker's talk light on for the line's real length).
+
+## Checking clips without ears: Khmer Whisper
+`npm run asr` transcribes every clip with `seanghay/whisper-small-khmer-v2` (the khmer-history-doc / VoxCPM venv) and
+scores it against the script (character similarity, ignoring spaces, punctuation and Latin letters). Scores of
+0.9–1.0 are clean. English tech words inside Khmer lines (Server, load balancer) drop to ~0.75–0.85 because
+Whisper spells them in Khmer; that's expected. A Khmer-only line under ~0.85 deserves a re-roll:
+1. Move its wav aside (e.g. `build/vox/take1/`).
+2. Set `"seeds": {"<id>": 21}` in lines.json.
+3. Run `npm run voices`, then `npm run asr`.
+4. Keep whichever take scores higher.
+
+The model downloads on first use if it isn't cached.

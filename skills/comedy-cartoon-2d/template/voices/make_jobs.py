@@ -16,7 +16,7 @@ for vid, v in d.get("voices", {}).items():
     jobs["voices"].append({"voice_id": vid, "design": v["design"], "sample_text": v["sample"],
                            "out_wav": f"{P}/voices/{vid}.wav", "seed": v.get("seed", 1234)})
 for lid, line in d.get("lines", {}).items():
-    who, text = line[0], line[1]
+    who, text = line[0], (line[3] if len(line) > 3 and line[3] else line[1])  # optional 4th field: spoken text (respelling)
     v = d["voices"][who]
     if v.get("engine", "voxcpm") != "voxcpm":
         continue
