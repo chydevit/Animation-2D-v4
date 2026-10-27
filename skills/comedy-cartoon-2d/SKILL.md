@@ -25,8 +25,9 @@ reference for how gags, camera moves and cues are written.
 `SK` = this skill's folder (`~/.claude/skills/comedy-cartoon-2d`).
 
 ## Requirements
-macOS (Apple Silicon is best), Node 18+, ffmpeg. Dialogue uses VoxCPM2, run through the venv that the
-khmer-2d-animation skill installs (`~/.claude/skills/khmer-2d-animation/.venv-vox`, override with `VOX_PY`). The
+macOS (Apple Silicon is best), Node 18+, ffmpeg. Dialogue uses VoxCPM2 from `$VOX_PY`, the khmer-2d-animation
+skill's venv or `~/voxcpm-env`. If none exists, `npm run voices` prints the one-line install
+(`python3.12 -m venv ~/voxcpm-env && ~/voxcpm-env/bin/pip install voxcpm soundfile`). The
 Koulen Khmer font is bundled. Characters must be **original designs**; never recreate existing cartoon characters,
 even renamed.
 

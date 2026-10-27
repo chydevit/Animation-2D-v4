@@ -22,8 +22,10 @@
   (macOS TTS, English only, robotic); it is used only when the VoxCPM clip is missing.
 
 ## Making the clips
-`npm run voices` → `voices/run.sh`: writes `build/vox/jobs.json`, then the VoxCPM2 worker (`voices/tts_vox.py`, run with
-the khmer-2d-animation skill's `.venv-vox`; override with `VOX_PY=`):
+`npm run voices` → `voices/run.sh`: writes `build/vox/jobs.json`, then runs the VoxCPM2 worker (`voices/tts_vox.py`) with
+the first Python found among `$VOX_PY`, the khmer-2d-animation skill's `.venv-vox`, and `~/voxcpm-env`. If none
+exists, install it once: `python3.12 -m venv ~/voxcpm-env && ~/voxcpm-env/bin/pip install voxcpm soundfile`
+(the ~5 GB model downloads on first use). The worker:
 1. **Locks one voice per character**: designs `voices/<who>.wav` from `(design)sample` once.
 2. **Clones every line** from that clip into `build/vox/<id>.wav` so a character never changes voice.
 Existing files are skipped. Delete a line's wav to regenerate it; delete `voices/<who>.wav` **and** that character's
