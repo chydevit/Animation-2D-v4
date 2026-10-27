@@ -7,6 +7,7 @@ videos where characters talk, with lip-sync and a narrator.
 | path | what |
 |---|---|
 | `skills/comedy-cartoon-2d/` | the Claude Code skill (engine, guides, and two finished example films) |
+| `commands/cartoon.md` | the short `/cartoon` command that runs the skill |
 
 ---
 
@@ -39,6 +40,7 @@ brew install node ffmpeg
 ```sh
 git clone https://github.com/chydevit/Animation-2D-v4.git
 cp -R Animation-2D-v4/skills/comedy-cartoon-2d ~/.claude/skills/
+mkdir -p ~/.claude/commands && cp Animation-2D-v4/commands/cartoon.md ~/.claude/commands/   # the /cartoon shortcut
 ```
 Restart Claude Code so it picks up the skill.
 
@@ -56,10 +58,12 @@ account or internet needed after that.
 skip this step.)
 
 ### Step 4: ask Claude for a cartoon
-Open Claude Code in an empty folder and type `/` to call the skill directly, then describe your cartoon after it:
+Open Claude Code in an empty folder and type `/cartoon` (the short way) or `/comedy-cartoon-2d`, then describe your
+cartoon after it:
 ```
-/comedy-cartoon-2d a hungry cat tries to steal a fish from a market seller on a scooter, 60 seconds, Khmer voices
+/cartoon a hungry cat tries to steal a fish from a market seller on a scooter, 60 seconds, Khmer voices
 ```
+`/cartoon` uses the Getaway Car cartoon look unless you ask for something else.
 Typing `/` shows a menu of your skills; start typing `comedy` and press **Tab** or **Enter** to pick it.
 
 You can also just describe your cartoon without the `/` and Claude will pick the skill by itself. Examples:
