@@ -1,6 +1,11 @@
 # Animation-2D-v4
 
-**Getaway Car**: a 90-second comedy cartoon with Khmer dialogue, drawn completely in code, plus the
+Two 2D cartoons with Khmer dialogue, drawn completely in code:
+- **Getaway Car**: a 90-second slapstick heist comedy.
+- **Bong Smei, Bong Nimith & Devit**: a 2.5-minute story about a Phnom Penh tech team (a mentor, an engineer and
+  a junior developer) who build a food-delivery app, crash on launch day and learn to work together.
+
+Also included is the
 **comedy-cartoon-2d** skill that lets [Claude Code](https://claude.com/claude-code) make new cartoons from a short
 description: slapstick comedies like this one, and story videos where characters talk, with lip-sync and a narrator.
 The skill includes two finished examples with their videos: *Getaway Car* (comedy) and *Bong Smei, Bong Nimith &
@@ -11,12 +16,16 @@ Devit* (a 2.5-minute Khmer story about a Phnom Penh tech team).
 | `Getaway Car.mp4` | the finished film (1920×1080, 24 fps, Khmer voices, Khmer + English subtitles you can turn on) |
 | `Getaway Car.km.srt`, `Getaway Car.en.srt` | the subtitles as separate files |
 | `getaway-car/` | the film's source code, voices and dialogue |
+| `Bong Smei, Bong Nimith and Devit.mp4` | the story film (2:36, Khmer voices + narrator, Khmer + English subtitles, cover embedded) |
+| `Bong Smei, Bong Nimith and Devit.km.srt`, `.en.srt` | its subtitles |
+| `Bong Smei, Bong Nimith and Devit - cover.png`, `- cover 1280x720.jpg` | its cover / thumbnail |
+| `team-story/` | the story film's source code, voices, dialogue and voice clips |
 | `skills/comedy-cartoon-2d/` | the Claude Code skill |
 
 ---
 
-## 1. Watch the film
-Download `Getaway Car.mp4` and open it in any video player. To see subtitles, choose **Subtitles → ខ្មែរ** or
+## 1. Watch the films
+Download `Getaway Car.mp4` or `Bong Smei, Bong Nimith and Devit.mp4` and open it in any video player. To see subtitles, choose **Subtitles → ខ្មែរ** or
 **English** in your player (in QuickTime: *View → Subtitles*; VLC also works). You can also load the `.srt` files.
 
 ---
@@ -125,9 +134,9 @@ The guides are in `skills/comedy-cartoon-2d/references/`.
 
 ---
 
-## 4. Rebuild Getaway Car from source
+## 4. Rebuild the films from source
 ```sh
-cd getaway-car
+cd getaway-car     # or: cd team-story
 npm install
 npm run build
 ```

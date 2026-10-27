@@ -13,3 +13,11 @@ vidssave.com*
 !skills/comedy-cartoon-2d/template/build/
 skills/comedy-cartoon-2d/template/build/*
 !skills/comedy-cartoon-2d/template/build/vox/
+# ...and the team story's VoxCPM2 clips (but not caches or discarded takes)
+!team-story/build/
+team-story/build/*
+!team-story/build/vox/
+team-story/build/vox/*
+!team-story/build/vox/*.wav
+# the project's film/ folder duplicates the finished MP4 kept at the repo root
+team-story/film/
