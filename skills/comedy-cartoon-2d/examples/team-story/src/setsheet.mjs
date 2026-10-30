@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { W, H } from './core.mjs';
 import * as st from './sets.mjs';
 import { person } from './people.mjs';
+import './cast.mjs';
 fs.mkdirSync('build/stills', { recursive: true });
 const shots = {
   skyline: c => { st.sunsetSky(c); st.skyline(c, 0); st.officeTower(c, 0); },

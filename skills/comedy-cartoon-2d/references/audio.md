@@ -21,6 +21,10 @@ the dialogue timeline plus warnings for **overlapping lines** and **unknown cue 
 | `build` | driving 16th ostinato with rising filter + kick (work montages, racing the clock) | `bpm` 120 |
 | `triumph` | brass chords + drums + sparkle (launches, success) | `bpm` 120 |
 | `tender` | pads + e-piano arpeggio + pentatonic melody (heartfelt endings, night scenes) | `bpm` 72 |
+| `tech` | 16th-note synth pluck arpeggio + pulsing bass + soft four-on-the-floor (tech lessons, "how to" segments); `dark: true` for minor/no claps (hackers, flashbacks) | `bpm` 104, `dark`, `drums` |
+| `love` | harp glissando up, then a dreamy waltz (pad, rhodes, vibes): the sweet sting under a cheesy flirting line; at `bpm` 72 it carries a slow-motion moment | `bpm` 96, `key` |
+| `game` | chiptune "game time": square-wave lead, fast arpeggio, pulse bass, 8-bit drums | `bpm` 152, `lead: false` |
+| `leak` | the `upbeat` cue squeezed through a 1–4 kHz band: music leaking from someone's headphones | as `upbeat` |
 
 `how`: `'cut'` (40 ms), `'fade'` + `dur`, `'tapestop'` + `dur` (the record slows to a halt; great for running out of
 gas / a plan collapsing). Every section has `gain`. Cut the music for deadpan holds and big reveals: **silence is a gag**.
@@ -41,8 +45,10 @@ effort/push; i = step), `sad_trombone` (wah-wah-wah-waaah), `end_button` (jazzy 
 | bikes / bells | `bike_squeak {n, gap}`, `brake_squeak`, `bell` (bike bell ding), `register_ding` |
 | alarms | `siren {dur}` (wail), `siren_slow {dur}`, `alarm {dur}` (bank bell) |
 | body / voice FX | `gulp`, `heartbeat {n}`, `grunt {f0: 150 man / 225 woman / 320 kid, i, gain, pan}`, `yawn`, `munch {n}`, `scramble {dur}` (running feet), `drum_fingers {dur}` |
-| office / tech | `typing {dur, rate, gain, pan}`, `ping {n, gap}`, `error_buzz`, `alarm_beep {n}`, `server_hum {dur}`, `party_pop`, `party_horn`, `chime_success`, `highfive`, `swivel`, `marker {dur}`, `footsteps {n, gap}`, `sip`, `page_flip`, `clock_fast {dur}`, `sparkle`, `nod`, `whoosh {f0, f1, dur, gain}` |
-| ambience | `room_tone {dur}`, `city_amb {dur}`, `night_amb {dur}`, `motorbike {dur}`; one per shot with `dur: len` |
+| office / tech | `typing {dur, rate, gain, pan}`, `ping {n, gap}`, `error_buzz`, `alarm_beep {n}`, `server_hum {dur}`, `party_pop`, `party_horn`, `chime_success`, `highfive`, `swivel`, `marker {dur}`, `footsteps {n, gap}`, `sip`, `page_flip`, `clock_fast {dur}`, `sparkle`, `nod`, `click` (mouse click), `pop {f0, f1}`, `whoosh {f0, f1, dur, gain}` |
+| phones / security | `notify` (message chime), `buzz {n, gap}` (vibrate), `ring {n}` (ringtone), `stamp` (rubber stamp), `crack` (glass crack + bits), `denied` (access-denied buzzer), `bonk` (head hits something), `zap` (blur/pixelate), `slam` (door/shutter), `scribble {dur}` (fast pencil), `tick {n, gap}` (quiz clock), `correct` (quiz-show right answer), `flashback {down}` (harp-style gliss up / down), `heh {n, pan}` (sneaky villain laugh) |
+| ambience | `room_tone {dur}`, `city_amb {dur}`, `night_amb {dur}`, `motorbike {dur}`, `tuktuk {dur, gain, pan}`, `murmur {dur, gain}` (a room of people talking quietly: restaurants, audiences), `rain {dur, gain}`, `birds {n}`; one per shot with `dur: len` |
+| home / people | `knock {n}` (door knock), `applause {dur, gain}`, `shutter` (camera shutter: photos, freeze frames), `snore {vel, pan}`, `growl {dur}` (stomach growl), `pour {dur}` (pouring a drink), `tiptoe {n, gap}` |
 | nature / misc | `quack {n, gap}` (mama + ducklings), `quack_small`, `gull {n}`, `cricket {dur}` (awkward silence), `flutter {dur}` (paper/money), `snatch`, `zip_rope`, `lid_wobble`, `needle_drop`, `record_scratch`, `drumroll {dur}`, `blink`, `iris_snap` |
 
 Sync SFX to the frame of contact (the impact frame, not the anticipation). Put a `whoosh`/`zip` under every smear.
@@ -51,6 +57,10 @@ Sync SFX to the frame of contact (the impact frame, not the anticipation). Put a
 Any cue whose name is a line id in `voices/lines.json` plays that line (see voices.md). Place it where the mouth/reaction
 happens; `npm run audio` reports each line's real start and length, so adjust cues (or the shot) until there are no
 overlaps.
+
+A **chorus line** (several characters saying the same words together): give each character the line in
+`lines.json`, cue all of them at the same time, and add `{ sub: false }` to all but one, so only one subtitle is
+written: `[t, 'end_s'], [t, 'end_m', { sub: false }], [t, 'end_d', { sub: false }]`.
 
 ## Mix
 `film.json` `"mix": {"music": 0.5, "sfx": 0.75, "voice": 1.1, "duck": 1}` (these are the defaults, used by Getaway Car).

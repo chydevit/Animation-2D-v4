@@ -15,7 +15,8 @@
 }
 ```
 - `lang` is the spoken language (subtitle track 1); `translation` is the second subtitle track (third field of each line).
-- `fx`: `intercom` (drive-thru speaker), `radio`, `phone`. `gain`/`pan` per voice.
+- `fx`: `intercom` (drive-thru speaker), `radio`, `phone`. `gain`/`pan` per voice. One line can take an effect too:
+  top-level `"fx": {"<line id>": "thought"}` (inner voice with a soft echo, for a thought bubble) or `"phone"`.
 - `seeds.<line>` re-rolls a single line that came out garbled.
 - Optional 4th field = the text actually spoken, when it must differ from the subtitle: `["smei", "ខ្ញុំជាគ្រូណែនាំ (Mentor)។",
   "I'm the mentor.", "ខ្ញុំជាគ្រូណែនាំ Mentor។"]`. VoxCPM treats `(...)` as a voice instruction, so remove brackets
@@ -37,6 +38,10 @@ lines to redesign a voice (only when the user asks: voices are part of the chara
 
 Timing on Apple Silicon: model load 1–2.5 min, voice design 30–100 s, each line 10–60 s. **Run in the background**
 (`run_in_background`) and tell the user the ETA; it is the slowest step of the whole build.
+On a 16 GB Mac the model needs ~12 GB: with other heavy apps open it spills into swap and lines slow to 2–7 min
+each (79 lines took about 2.5 h). Re-estimate the ETA from the clip timestamps in `build/vox/` when asked, name the
+apps eating CPU or memory (`ps -Ao pcpu,comm -r | head`), and suggest closing them. If memory runs critically low the
+job can be killed; rerunning `npm run voices` resumes, since finished clips are skipped.
 
 ## Writing Khmer dialogue
 - Natural spoken Khmer, short punchy lines (cartoon timing): `បើកទៅ។` beats a full sentence. Interjections work well:
@@ -58,10 +63,18 @@ speaker's talk light on for the line's real length).
 `npm run asr` transcribes every clip with `seanghay/whisper-small-khmer-v2` (the khmer-history-doc / VoxCPM venv) and
 scores it against the script (character similarity, ignoring spaces, punctuation and Latin letters). Scores of
 0.9–1.0 are clean. English tech words inside Khmer lines (Server, load balancer) drop to ~0.75–0.85 because
-Whisper spells them in Khmer; that's expected. A Khmer-only line under ~0.85 deserves a re-roll:
-1. Move its wav aside (e.g. `build/vox/take1/`).
-2. Set `"seeds": {"<id>": 21}` in lines.json.
-3. Run `npm run voices`, then `npm run asr`.
-4. Keep whichever take scores higher.
+Whisper spells them in Khmer; that's expected. A Khmer-only line under ~0.85 deserves a re-roll, and so does any line where Whisper hears a name or the
+punchline wrong (Episode 7's last line, «ស្ដេចញ៉ែ», came back as "snack ញ៉ាយ" and scored 0.80). Whisper writes
+spoken numbers as digits (ដប់ប្រាំបួន → ១៩), so a correct line with numbers can score ~0.4–0.7: read the words,
+not just the score. Re-roll every flagged line in one go (one model load):
+1. Save the current takes: `cp build/vox/<id>.wav build/vox_keep/<id>.s7.wav` (7 is the default seed).
+2. Set `"seeds": {"<id>": 21, ...}` in lines.json and delete `build/vox/<id>.wav`.
+3. Run `npm run voices`, then save the new takes as `build/vox_keep/<id>.s21.wav`.
+4. `npm run asr -- <id> <id> ...` scores every saved take side by side.
+5. Keep the better take: copy it to `build/vox/<id>.wav`. If the old take wins, remove its seed from lines.json
+   so the file matches the clip, then run `npm run durations`.
+
+Expect about half the re-rolls to win. If both takes score the same, the word is probably hard for Whisper
+rather than mispronounced; keep it and mention it in the report.
 
 The model downloads on first use if it isn't cached.

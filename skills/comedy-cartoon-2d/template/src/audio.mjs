@@ -90,6 +90,16 @@ function rhodes(notes, dur, vel = 1) {
   for (const m of notes) { const f = midi(m); for (let i = 0; i < b.length; i++) { const t = i / SR; let e = Math.exp(-t * 1.6) * Math.min(1, t * 300); if (t > dur) e *= Math.exp(-(t - dur) * 8); const I = 1.4 * Math.exp(-t * 4); b[i] += Math.sin(TAU * f * t + I * Math.sin(TAU * f * t)) * e * (1 + 0.15 * Math.sin(TAU * 4.5 * t)) * vel * 0.18; } }
   return b;
 }
+// synth pluck (saw through a closing low-pass): arpeggios for the "tech" style
+function pluck(f, dur = 0.25, vel = 1, bright = 1) {
+  const b = buf(dur + 0.15), lp = new Biquad('lp', 3000, 2), s = new Saw(), s2 = new Saw();
+  for (let i = 0; i < b.length; i++) {
+    const t = i / SR; if (i % 32 === 0) lp.set(300 + 3800 * bright * Math.exp(-t * 18), 2);
+    let e = Math.exp(-t * 7) * Math.min(1, t * 600); if (t > dur) e *= Math.exp(-(t - dur) * 40);
+    b[i] = lp.p(s.n(f) * 0.6 + s2.n(f * 1.006) * 0.4) * e * vel * 0.5;
+  }
+  return b;
+}
 // soft synth pad (slow attack/release, filtered detuned saws)
 function pad(notes, dur, vel = 1, cutoff = 1100) {
   const b = buf(dur + 1.0), lp = new Biquad('lp', cutoff, 0.7);
@@ -151,6 +161,21 @@ const SFX = {
   },
 };
 const grunt = (f0, vel = 1) => SFX.voiceSynth(0.42, k => f0 * (1.05 - 0.15 * k), [[300, 4, 650], [2100, 6, 1100], [2900, 8, 2500, 0.4]], k => Math.min(1, k * 12) * (k < 0.55 ? 0.45 : 1) * Math.min(1, (1 - k) * 6), vel * 1.4);
+// a cartoon snore: a rumbling in-breath, then a whistling out-breath
+function snore(vel = 1) {
+  const b = buf(1.7), lp = new Biquad('lp', 500, 1.2); let ph = 0, ph2 = 0;
+  for (let i = 0; i < b.length; i++) { const t = i / SR;
+    if (t < 0.95) { const k = t / 0.95, env = Math.sin(Math.PI * k) ** 0.7; ph += TAU * (70 + 18 * k) / SR; b[i] = (lp.p(noise()) * 0.8 + Math.sign(Math.sin(ph)) * 0.12) * env * (0.7 + 0.3 * Math.sin(TAU * 26 * t)) * vel; }
+    else { const k = (t - 0.95) / 0.75, env = Math.sin(Math.PI * Math.min(1, k)) * 0.7; ph2 += TAU * (1050 - 380 * k) / SR; b[i] = (Math.sin(ph2) * 0.35 + noise() * 0.06) * env * vel; } }
+  return b;
+}
+// a room of people talking quietly (band-passed babble with syllable-rate wobble)
+function murmur(dur) {
+  const b = buf(dur), bp = new Biquad('bp', 700, 0.8), bp2 = new Biquad('bp', 1500, 1.2);
+  const r = [3.1, 4.7, 5.9, 2.3].map(f => [f, rnd() * TAU]);
+  for (let i = 0; i < b.length; i++) { const t = i / SR, am = r.reduce((a, [f, p]) => a + Math.max(0, Math.sin(TAU * f * t + p)), 0) / 2.2, env = Math.min(1, t / 0.4, (dur - t) / 0.5); b[i] = (bp.p(noise()) * 1.4 + bp2.p(noise()) * 0.5) * am * env; }
+  return b;
+}
 const yawn = () => SFX.voiceSynth(1.15, k => 210 - 100 * k, [[750, 5, 450], [1200, 6, 800], [2600, 8, 2400, 0.3]], k => Math.sin(Math.PI * Math.min(1, k * 1.05)) * (k > 0.8 ? 0.5 : 1), 1.6);
 const sadTrombone = () => { const out = buf(1.9); [[63, 0, 0.32], [62, 0.34, 0.32], [61, 0.68, 0.32], [60, 1.02, 0.8]].forEach(([m, at, d], i) => { const n = trombone(m, i === 3 ? m - 0.6 : m, d, { vel: 0.8, wah: i === 3 ? 6 : 3.2 }); const o = Math.round(at * SR); for (let j = 0; j < n.length && o + j < out.length; j++) out[o + j] += n[j]; }); return out; };
 
@@ -231,6 +256,11 @@ function playCue(c) {
     case 'sad_trombone': case 'iris_close': mix('music', t, sadTrombone(), 0.75); break;
     case 'iris_snap': m(S.pop(1200, 300, 0.7), 0.6); break;
     case 'yawn': case 'v_cop_yawn': mix('vox', t, yawn(), 0.6, c.pan ?? -0.1); break;
+    case 'pour': m(S.hiss(c.dur || 1.5, 0.8, 1300), 0.28, 0.1); for (let k = 0; k < (c.dur || 1.5) * 7; k++) mix('sfx', t + k / 7 + rnd() * 0.05, S.pop(500 + rnd() * 400, 300, 0.4), 0.18, 0.1); break;
+    case 'growl': m(S.rumble(c.dur || 0.8, 1.0), 0.9); mix('sfx', t + 0.3, S.squeak(260, 180, 0.35, 0.5), 0.3); break;
+    case 'tiptoe': for (let k = 0; k < (c.n || 4); k++) mix('sfx', t + k * (c.gap || 0.3), S.wood(k % 2 ? 2100 : 2500, 0.6), 0.25, (k % 2) * 0.2 - 0.1); break;
+    case 'snore': mix('vox', t, snore(c.vel ?? 1), 0.55, c.pan ?? 0); break;
+    case 'murmur': m(murmur(c.dur || 2), c.gain ?? 0.5, 0); break;
     // ---- office / tech / city
     case 'typing': for (let k = 0; k < (c.dur || 1) * (c.rate || 14); k++) { const tt = t + k / (c.rate || 14) + rnd() * 0.03; mix('sfx', tt, S.click(1600 + rnd() * 1800, 0.8), 0.3 * (c.gain ?? 1), c.pan ?? 0.1); if (rnd() < 0.08) mix('sfx', tt, S.wood(520, 0.6), 0.25, 0.1); } break;
     case 'ping': for (let k = 0; k < (c.n || 1); k++) mix('sfx', t + k * (c.gap || 0.18), S.bell(k % 2 ? 1760 : 2093, 0.5, 0.6), 0.35 * (c.gain ?? 1), (rnd() - 0.5) * 0.8); break;
@@ -240,6 +270,26 @@ function playCue(c) {
     case 'party_horn': { const b = buf(0.6), a = new Saw(), bp = new Biquad('bp', 1200, 2); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = bp.p(a.n(470 + 30 * Math.sin(TAU * 7 * tt))) * Math.min(1, tt * 30) * Math.min(1, (0.6 - tt) * 8) * 1.2; } m(b, 0.5, -0.3); break; }
     case 'chime_success': [84, 88, 91, 96].forEach((n, k) => mix('sfx', t + k * 0.11, S.bell(midi(n), 1.4, 0.7), 0.45, -0.2 + k * 0.15)); break;
     case 'highfive': m(S.hiss(0.05, 3, 1200), 0.9); m(S.thud(160, 0.7, 0.12), 0.6); [96, 100, 103].forEach((n, k) => mix('sfx', t + 0.05 + k * 0.05, xylo(n, 0.5), 0.35)); break;
+    case 'notify': [88, 95].forEach((n, k) => mix('sfx', t + k * 0.12, S.bell(midi(n), 0.6, 0.7), 0.4 * (c.gain ?? 1), 0.2)); break;
+    case 'buzz': for (let k = 0; k < (c.n || 2); k++) { const d = 0.45, b = buf(d), lp = new Biquad('lp', 400); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = lp.p(Math.sign(Math.sin(TAU * 160 * tt)) * (0.6 + 0.4 * Math.sin(TAU * 25 * tt))) * Math.min(1, tt * 60) * Math.min(1, (d - tt) * 30) * 0.8; } mix('sfx', t + k * (c.gap || 0.75), b, 0.6 * (c.gain ?? 1), 0.1); } break;
+    case 'ring': for (let k = 0; k < (c.n || 2); k++) for (let j = 0; j < 8; j++) mix('sfx', t + k * 1.1 + j * 0.06, S.bell(j % 2 ? 1320 : 1568, 0.25, 0.5), 0.3 * (c.gain ?? 1), 0.25); break;
+    case 'stamp': m(S.thud(90, 1.2, 0.35), 1.0); m(S.hiss(0.08, 2, 1500), 0.7); m(S.wood(300, 1), 0.6); break;
+    case 'crack': m(S.clang([2100, 3400, 5200], 0.6, 25), 0.6); for (let k = 0; k < 6; k++) mix('sfx', t + 0.05 + k * 0.05 + rnd() * 0.03, S.click(2500 + rnd() * 3000, 1), 0.6, rnd() - 0.5); mix('sfx', t + 0.25, S.slide(1400, 300, 0.5), 0.4); break;
+    case 'tick': for (let k = 0; k < (c.n || 4); k++) mix('sfx', t + k * (c.gap || 0.5), S.wood(k % 2 ? 1500 : 1900, 1), 0.55, 0.2); break;
+    case 'correct': [84, 88, 91, 96].forEach((n, k) => mix('sfx', t + k * 0.09, xylo(n, 0.9), 0.55, -0.2 + k * 0.13)); mix('sfx', t + 0.36, S.bell(midi(96), 1.2, 0.8), 0.4); break;
+    case 'denied': { const b = buf(0.5), a = new Saw(), lp = new Biquad('lp', 1400); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = lp.p(Math.sign(a.n(140)) + Math.sign(Math.sin(TAU * 147 * tt))) * 0.25 * Math.min(1, tt * 100) * Math.min(1, (0.5 - tt) * 30); } m(b, 0.7); break; }
+    case 'bonk': m(S.clang([600, 950, 1500], 0.8, 14), 0.7); m(S.boing(0.8, 0.8), 0.6); break;
+    case 'flashback': for (let k = 0; k < 12; k++) mix('music', t + k * 0.06, xylo(72 + [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26][c.down ? 11 - k : k], 0.5), 0.35, (k / 11) - 0.5); m(S.whoosh(400, 2600, 0.8, 0.6), 0.3); break;
+    case 'heh': for (let k = 0; k < (c.n || 3); k++) mix('vox', t + k * 0.22, SFX.voiceSynth(0.16, q => 130 - 20 * q, [[600, 5], [1100, 6], [2500, 8, 2400, 0.4]], q => Math.sin(Math.PI * q), 0.9), 0.55, c.pan ?? 0.3); break;
+    case 'slam': m(S.thud(70, 1.3, 0.5), 1.0); m(S.clang([180, 290], 0.5, 9), 0.5); m(S.hiss(0.15, 1, 1200), 0.4); break;
+    case 'zap': m(S.slide(3000, 200, 0.3), 0.4); m(S.hiss(0.3, 1.5, 2500), 0.5); break;
+    case 'scribble': for (let k = 0; k < (c.dur || 1) * 7; k++) mix('sfx', t + k / 7 + rnd() * 0.03, S.squeak(2600 + rnd() * 600, 3000 + rnd() * 500, 0.1, 0.5), 0.2, -0.2); break;
+    case 'knock': for (let k = 0; k < (c.n || 3); k++) { mix('sfx', t + k * 0.22, S.wood(260, 1.2), 0.9, 0.1); mix('sfx', t + k * 0.22, S.thud(120, 0.6, 0.1), 0.6); } break;
+    case 'applause': for (let k = 0; k < (c.dur || 2) * 26; k++) { const tt = t + rnd() * (c.dur || 2), f = 1 - (tt - t) / (c.dur || 2) * 0.6; mix('sfx', tt, S.hiss(0.05, 1.6 * f, 1200 + rnd() * 1500), 0.5 * (c.gain ?? 1), rnd() * 1.4 - 0.7); } break;
+    case 'rain': { const d = c.dur || 3; for (let k = 0; k < d * 18; k++) mix('sfx', t + rnd() * d, S.click(3000 + rnd() * 3000, 0.4), 0.2 * (c.gain ?? 1), rnd() * 0.6 - 0.3); break; }
+    case 'birds': for (let k = 0; k < (c.n || 4); k++) { const tt = t + k * 0.7 + rnd() * 0.3; for (let j = 0; j < 3; j++) mix('sfx', tt + j * 0.08, xylo(96 + (j % 2) * 3 + Math.floor(rnd() * 3), 0.4), 0.18, 0.4); } break;
+    case 'tuktuk': m(S.engine(c.dur || 2, 70, 90, 0.8, 1.2), (c.gain ?? 0.45), c.pan || 0); break;
+    case 'shutter': m(S.click(4200, 1.2), 0.9); mix('sfx', t + 0.05, S.hiss(0.12, 1.4, 2500), 0.6); mix('sfx', t + 0.09, S.click(2600, 1), 0.7); break;
     case 'swivel': m(S.whoosh(500, 2200, 0.45, 0.9), 0.5); m(S.squeak(700, 900, 0.3, 0.6), 0.25); break;
     case 'marker': for (let k = 0; k < (c.dur || 1) * 4; k++) mix('sfx', t + k * 0.25 + rnd() * 0.05, S.squeak(2100 + rnd() * 500, 2500 + rnd() * 400, 0.16, 0.5), 0.18, -0.2); break;
     case 'footsteps': for (let k = 0; k < (c.n || 4); k++) { mix('sfx', t + k * (c.gap || 0.45), S.thud(140, 0.4, 0.12), 0.45, (k % 2) * 0.3 - 0.15); mix('sfx', t + k * (c.gap || 0.45), S.wood(380, 0.4), 0.2); } break;
@@ -254,6 +304,8 @@ function playCue(c) {
     case 'clock_fast': for (let tt = 0, k = 0; tt < (c.dur || 2); k++) { mix('sfx', t + tt, S.click(k % 2 ? 1800 : 2600, 0.8), 0.35); tt += Math.max(0.05, 0.3 - tt * 0.12); } break;
     case 'server_hum': { const d = c.dur || 3, b = buf(d), hp = new Biquad('bp', 900, 1); for (let i = 0; i < b.length; i++) { const tt = i / SR; b[i] = (Math.sin(TAU * 60 * tt) * 0.2 + Math.sin(TAU * 120 * tt) * 0.1 + hp.p(noise()) * 0.25) * Math.min(1, tt * 3) * Math.min(1, (d - tt) * 3); } m(b, 0.35); break; }
     case 'nod': m(S.wood(700, 0.4), 0.15); break;
+    case 'click': m(S.click(2600, 1), 0.8); mix('sfx', t + 0.07, S.click(1700, 0.7), 0.6); break;
+    case 'pop': m(S.pop(c.f0 || 1100, c.f1 || 300, 1), c.gain ?? 0.7); break;
     case 'sting_title': mix('music', t, brass([50, 57, 62, 65, 69].map(n => n + (c.key || 0)), 0.5, { vel: 1 }), 0.6); mix('music', t, crash(0.8, 1.8), 0.4); mix('music', t, kick(1), 0.5); break;
     case 'ta_da': mix('music', t, brass([50, 57, 62, 66, 69, 74].map(n => n + (c.key || 0)), 1.1, { vel: 1 }), 0.7); mix('music', t, crash(1, 2.4), 0.5); mix('music', t, kick(1), 0.6); mix('music', t, bassNote(midi(38 + (c.key || 0)), 1.0), 0.9); break;
     case 'heave_hit': { const i = c.i || 0, lead = c.lead ?? 0.4; mix('music', t - lead, bassNote(midi(26 + i), 0.3, 1), 0.9); mix('music', t - lead, tom(80, 0.8), 0.5); mix('music', t, brass([50 + i, 57 + i, 62 + i], 0.35, { vel: 0.9, bright: 0.8 }), 0.55); mix('music', t, snare(0.8), 0.4); break; }
@@ -268,14 +320,15 @@ function playCue(c) {
       if (LINES[c.name]) {
         const [who, text, tr] = LINES[c.name], V = VCFG.voices[who] || {}, clip = fadeEdges(samples(c.name));
         mix('vox', t, clip, V.gain ?? 0.95, V.pan ?? 0);
-        SPOKEN.push({ t, dur: clip.length / SR, who, text, tr });
+        if (c.sub !== false) SPOKEN.push({ t, dur: clip.length / SR, who, text, tr }); // sub: false = a chorus voice (no extra subtitle)
       } else UNKNOWN.add(c.name);
   }
 }
 
 // ---------------------------------------------------------------- the score
 // Music sections are cue pairs placed in shots:  [lt, 'music', {id, style, ...opts}]  ...  [lt, 'music_end', {id, how}]
-// styles: chase (walking bass + swing drums + brass stabs; melody: true | 'shout'), sneak (heist pizzicato),
+// styles: chase (walking bass + swing drums + brass stabs; melody: true | 'shout'), sneak (heist pizzicato), tech (pluck arpeggio + pulse bass; dark, drums),
+// love (harp glissando + dreamy waltz sting), game (chiptune), leak (upbeat squeezed through headphones),
 //         muzak (quiet bossa e-piano), tension (accelerating low pulses + tremolo), vamp (happy major vamp)
 // end how: 'cut' (default, 40 ms), 'fade' {dur}, 'tapestop' {dur} (record slows to a halt)
 // common opts: gain, key (semitones from D minor), bpm, vel
@@ -393,6 +446,57 @@ const STYLES = {
       sec.put(tb, bassNote(midi(r + key), bar * 0.9, 0.5), 0.4);
       [0, 1, 2, 1].forEach((ix, q) => sec.put(tb + q * beat, rhodes([v[ix] + 12 + key], beat * 0.9, 0.5), 0.3, 0.25));
       if (k % 2 === 1) [0, 1.5, 2, 3].forEach((b, q) => sec.put(tb + b * beat, xylo(mel[(k * 4 + q) % 8] + key, 0.45), 0.28, -0.2));
+    }
+    return sec;
+  },
+  // a short sweet "love" sting under a cheesy line: harp glissando up, then a dreamy waltz (rhodes + vibes + pad)
+  love(len, { bpm = 96, key = 0 } = {}) {
+    const beat = 60 / bpm, sec = section(len), bar = beat * 3;
+    [60, 64, 67, 71, 72, 76, 79, 83, 84].forEach((n, i) => sec.put(i * 0.045, xylo(n + key, 0.6), 0.22, -0.4 + i * 0.1));
+    const prog = [[48, [64, 67, 71]], [45, [64, 67, 72]], [41, [65, 69, 72]], [43, [62, 67, 71]]];
+    const mel = [76, 79, 84, 83, 79, 76, 77, 81, 79, 76, 74, 79];
+    for (let k = 0; k * bar < len; k++) {
+      const [r, v] = prog[k % 4], tb = 0.4 + k * bar;
+      sec.put(tb, pad(v.map(n => n + key), bar * 0.95, 0.6, 1100), 0.35, 0);
+      sec.put(tb, bassNote(midi(r + key), beat * 0.9, 0.45), 0.35);
+      [1, 2].forEach(q => sec.put(tb + q * beat, rhodes(v.map(n => n + key), beat * 0.8, 0.4), 0.22, 0.2));
+      [0, 1, 2].forEach(q => sec.put(tb + q * beat, xylo(mel[(k * 3 + q) % 12] + 12 + key, 0.5), 0.2, -0.15));
+    }
+    return sec;
+  },
+  // light electronic "tech" bed: 16th-note pluck arpeggio, pulsing bass, soft four-on-the-floor (dark: minor, no claps)
+  // chiptune "game time": square-wave lead, fast arpeggio, pulse bass, punchy 8-bit drums (bpm ~150)
+  game(len, { bpm = 152, key = 0, lead = true } = {}) {
+    const beat = 60 / bpm, sec = section(len), bar = beat * 4, s16 = beat / 4;
+    const sqw = (m, dur, vel = 1, duty = 0.5) => { const b = buf(dur + 0.02), f = midi(m); for (let i = 0; i < b.length; i++) { const t = i / SR, ph = (f * t) % 1; b[i] = (ph < duty ? 1 : -1) * vel * Math.min(1, t * 400) * Math.max(0, 1 - Math.max(0, t - dur) * 50) * (1 - 0.35 * t / dur); } return b; };
+    const prog = [[48, [60, 64, 67]], [45, [57, 60, 64]], [41, [57, 60, 65]], [43, [55, 59, 62]]];
+    const MEL = [[0, 72, 1], [1, 76, 1], [2, 79, 1.5], [3.5, 77, .5], [4, 76, 1], [5, 74, 1], [6, 72, 2], [8, 69, 1], [9, 72, 1], [10, 76, 1.5], [11.5, 74, .5], [12, 72, 1], [13, 71, 1], [14, 67, 2]];
+    for (let k = 0; k * bar < len; k++) {
+      const [r, v] = prog[k % 4], tb = k * bar;
+      for (let e = 0; e < 16; e++) sec.put(tb + e * s16, sqw(v[e % 3] + 12 + key, s16 * 0.8, 0.5, 0.25), 0.07, (e % 2) * 0.4 - 0.2);
+      for (let e = 0; e < 8; e++) sec.put(tb + e * beat / 2, sqw(r + key + (e % 2 ? 12 : 0), beat * 0.4, 0.8, 0.5), 0.1);
+      for (let q = 0; q < 4; q++) { sec.put(tb + q * beat, kick(0.7), 0.4); if (q % 2) sec.put(tb + q * beat, snare(0.6, 300), 0.26, 0.05); sec.put(tb + q * beat + beat / 2, hat(0.5, 0.02), 0.13, 0.3); }
+    }
+    if (lead) for (let ph = 0; ph * 16 * beat < len; ph++) for (const [b0, m, d] of MEL) sec.put(ph * 16 * beat + b0 * beat, sqw(m + key + (ph % 2 && b0 >= 8 ? 2 : 0), d * beat * 0.85, 0.6, 0.5), 0.085, 0.1);
+    return sec;
+  },
+  // music leaking out of someone's headphones: the upbeat cue squeezed through a tinny band (1–4 kHz)
+  leak(len, o = {}) {
+    const sec = STYLES.upbeat(len, { ...o, bpm: o.bpm || 128 });
+    for (const ch of [sec.L, sec.R]) { const f = [new Biquad('hp', 1000), new Biquad('hp', 1000), new Biquad('lp', 4000)]; for (let i = 0; i < ch.length; i++) ch[i] = f[2].p(f[1].p(f[0].p(ch[i]))) * 1.6; }
+    return sec;
+  },
+  tech(len, { bpm = 104, key = 0, dark = false, drums = true } = {}) {
+    const beat = 60 / bpm, sec = section(len), bar = beat * 4, s16 = beat / 4;
+    const prog = dark ? [[45, [57, 60, 64, 69]], [45, [57, 60, 64, 69]], [41, [57, 60, 65, 69]], [40, [56, 59, 64, 68]]]
+                      : [[45, [57, 60, 64, 69]], [41, [57, 60, 65, 69]], [48, [55, 60, 64, 67]], [43, [55, 59, 62, 67]]];
+    const arp = [0, 1, 2, 3, 2, 1, 2, 3, 0, 1, 2, 3, 2, 3, 1, 2];
+    for (let k = 0; k * bar < len; k++) {
+      const [r, v] = prog[k % 4], tb = k * bar;
+      for (let e = 0; e < 16; e++) sec.put(tb + e * s16, pluck(midi(v[arp[e]] + 12 + key), s16 * 1.5, e % 4 === 0 ? 0.9 : 0.6, dark ? 0.6 : 1), 0.2, (e % 2) * 0.5 - 0.25);
+      for (let e = 0; e < 8; e++) sec.put(tb + e * beat / 2, bassNote(midi(r + key), beat * 0.4, e % 2 ? 0.5 : 0.8), 0.45);
+      sec.put(tb, pad(v.slice(0, 3).map(n => n + key), bar * 0.95, 0.45, dark ? 700 : 1300), 0.25);
+      if (drums) for (let q = 0; q < 4; q++) { sec.put(tb + q * beat, kick(0.55), 0.45); if (q % 2 && !dark) sec.put(tb + q * beat, snare(0.4, 260), 0.22, 0.05); sec.put(tb + q * beat + beat / 2, hat(0.5, 0.03), 0.16, 0.3); }
     }
     return sec;
   },

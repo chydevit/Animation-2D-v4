@@ -13,6 +13,6 @@ VoxCPM2 python not found. Install it once:
 MSG
   exit 1
 fi
-if [ "$1" = "--asr" ]; then "$VOX_PY" voices/asr_check.py 2>&1 | grep -E "^[a-z0-9_]+ +[0-9]"; exit; fi  # Khmer Whisper check
+if [ "$1" = "--asr" ]; then shift; "$VOX_PY" voices/asr_check.py "$@" 2>&1 | grep -E "^[a-z0-9_./]+ +[0-9]"; exit; fi  # Khmer Whisper check (ids: compare takes)
 python3 voices/make_jobs.py || exit 1
 "$VOX_PY" voices/tts_vox.py build/vox/jobs.json 2>&1 | grep -E '^\{' | tee build/vox/log.txt

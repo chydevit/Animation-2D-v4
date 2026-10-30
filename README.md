@@ -6,16 +6,19 @@ videos where characters talk, with lip-sync and a narrator.
 
 | path | what |
 |---|---|
-| `skills/comedy-cartoon-2d/` | the Claude Code skill (engine, guides, and two finished example films) |
+| `skills/comedy-cartoon-2d/` | the Claude Code skill (engine, guides, and three finished example films) |
 | `commands/cartoon.md` | the short `/cartoon` command that runs the skill |
 
 ---
 
 ## 1. See what it makes
-The skill includes two finished films as examples, each with its video:
+The skill includes three finished films as examples:
 - `skills/comedy-cartoon-2d/examples/getaway-car/Getaway Car.mp4`: a 90-second slapstick heist comedy
 - `skills/comedy-cartoon-2d/examples/team-story/Bong Smei, Bong Nimith and Devit.mp4`: a 2.5-minute story about a
   Phnom Penh tech team (a mentor, an engineer and a junior developer)
+- `skills/comedy-cartoon-2d/examples/kimlong/`: Office series Episode 7 «គីមឡុង ស្ដេចញ៉ែ» (Kimlong, the King of
+  Flirting), a 3:44 Khmer story with nine series characters. It has a contact sheet and cover instead of a video;
+  build it yourself (section 4) to get the MP4.
 
 Open either in any video player. To see subtitles, choose **Subtitles → ខ្មែរ** or **English** (in QuickTime:
 *View → Subtitles*; VLC also works).
@@ -74,6 +77,8 @@ You can also just describe your cartoon without the `/` and Claude will pick the
 - Paste a full build prompt (characters, story beats with times, camera, sound, colours), like
   [the Getaway Car prompt](skills/comedy-cartoon-2d/examples/getaway-car/prompt.md) or
   [the team story prompt](skills/comedy-cartoon-2d/examples/team-story/prompt.md).
+- *"Make the next Office episode: …"* with the series cast (Smey, Nimith, David, Sopheak, Leanghak, Pisey, Kimlong,
+  Channy, Sreyneang). Claude starts from [the Episode 7 example](skills/comedy-cartoon-2d/examples/kimlong/prompt.md).
 - Add *"use the Getaway Car look"* for thick black outlines and bright colours, or *"soft pastel"* for a gentler style.
 
 Claude will then:
@@ -108,6 +113,7 @@ The skill is also a normal Node project you can edit by hand:
 ~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh my-cartoon                         # 9 s starter film
 ~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh my-cartoon --example getaway-car   # the comedy example
 ~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh my-cartoon --example team-story    # the story example
+~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh my-cartoon --example kimlong       # Office series Episode 7
 cd my-cartoon
 ```
 | command | what it does |
@@ -115,7 +121,7 @@ cd my-cartoon
 | `npm run stills -- 1.5 4 8` | render pictures at those seconds (fast check) → `build/stills/` |
 | `npm run sheet` | character model sheet |
 | `npm run voices` | make missing voice clips with VoxCPM2 |
-| `npm run asr` | check every Khmer voice line with Khmer Whisper |
+| `npm run asr` | check every Khmer voice line with Khmer Whisper (`npm run asr -- <ids>` compares saved takes) |
 | `npm run cover` | make the cover / thumbnail |
 | `npm run build` | render video + music/SFX/voices + subtitles + cover → `film/` |
 
@@ -131,11 +137,11 @@ The guides are in `skills/comedy-cartoon-2d/references/`.
 
 ## 4. Rebuild the example films
 ```sh
-~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh getaway-car --example getaway-car   # or: --example team-story
+~/.claude/skills/comedy-cartoon-2d/scripts/new_project.sh getaway-car --example getaway-car   # or: --example team-story / kimlong
 cd getaway-car
 npm run build
 ```
-The Khmer voice clips are included, so this works without the voice engine (about 1 minute).
+The Khmer voice clips are included, so this works without the voice engine (about 1 minute; Episode 7 takes a few).
 
 ---
 

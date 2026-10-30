@@ -28,6 +28,7 @@ const VOICE_FX = {
   intercom: ',highpass=f=500,lowpass=f=2800,acrusher=bits=8:mix=0.25',
   radio: ',highpass=f=350,lowpass=f=3400,acompressor=threshold=0.1:ratio=6',
   phone: ',highpass=f=300,lowpass=f=3000',
+  thought: ',aecho=0.8:0.55:70|140:0.35|0.18', // inner voice (lines.json "fx": { "<line id>": "thought" })
 };
 const srcWav = id => `build/vox/${id}.wav`;
 // mouth openness per frame (0..1) from the clip's loudness
@@ -49,7 +50,7 @@ export function prepare(id) {
   }
   const raw = `build/vox/${id}.f32`, meta = `build/vox/${id}.json`, mtime = fs.statSync(wav).mtimeMs;
   if (fs.existsSync(meta)) { const m = JSON.parse(fs.readFileSync(meta, 'utf8')); if (m.mtime === mtime && fs.existsSync(raw)) return m; }
-  const af = (viaSay ? `asetrate=22050*${V.say.pitch || 1},` : '') + 'aresample=44100,highpass=f=70' + (VOICE_FX[V.fx] || '');
+  const af = (viaSay ? `asetrate=22050*${V.say.pitch || 1},` : '') + 'aresample=44100,highpass=f=70' + (VOICE_FX[VCFG.fx?.[id] || V.fx] || '');
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', wav, '-af', af, '-f', 'f32le', '-ac', '1', '-ar', '44100', raw]);
   const b = fs.readFileSync(raw);
   const x = tightenPauses(new Float32Array(b.buffer, b.byteOffset, b.length / 4).slice());

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { W, H, INK, rrect, paint, poly, text } from './core.mjs';
 import { person, anchors, CAST } from './people.mjs';
+import './cast.mjs';
 import * as st from './sets.mjs';
 
 const film = JSON.parse(fs.readFileSync('film.json', 'utf8'));

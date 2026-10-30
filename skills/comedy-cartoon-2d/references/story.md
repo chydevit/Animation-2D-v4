@@ -12,6 +12,7 @@ with a cast, or any brief that's mostly dialogue and narration rather than slaps
 5. Style: pastel vs bold
 6. Music and ambience for stories
 7. Changing the brief midway
+8. A new Office series episode (the `kimlong` example)
 
 ## 1. The timeline comes from the voices
 In a talky film, shot lengths are set by the lines, so don't hard-code times. Use the running clock:
@@ -33,14 +34,28 @@ take(b.end + 1.2, (ctx, lt, t) => { /* draw */ }, [...b.cues, [0, 'room_tone', {
 `person(ctx, who, o)` is a natural-proportion cartoon person (big friendly head, IK arms and legs, clean lines).
 `who` is a key in `CAST` or a look object (spread a CAST entry and change colours for extras). A look has
 `H` (height px), `sw`/`ww` (shoulder and waist half-width), skin, hair, `hairStyle` (short | neat | messy |
-ponytail), `beard`, `glasses`, `headphones`, clothes `style` (polo | shirt | hoodie) and colours, `eyeSize`.
+ponytail | part | bob | wavy | receding | long | bun | spiky), `beard`, `glasses`, clothes `style` (polo | shirt |
+hoodie | tee | blouse | flannel) and colours, `eyeSize`. Extras on a look:
+- women: `skirt` (colour; add `pencil: true` for a fitted pencil skirt), `lashes`, `thinBrows`, `clip` (hair clip
+  colour, with `bob`), `tie` (ponytail hair-tie colour), `chainGlasses` (glasses hanging on a chain)
+- work: `lanyard` (colour; an ID badge, hide with `badge: false`), `necktie`, `apron` (waiter's bib apron),
+  `camera: true` (a camera round the neck; hidden with `camera: false` or while holding one)
+- `flannel` takes `tee` (the T-shirt under the open shirt) and `plaid` (check colour); `browCol` sets brow colour
+- headphones: `headphones: true` (small cups at the neck) or `phones: 'on' | 'one' | 'neck' | 'off'` (big over-ear
+  cans; `'one'` pushes one cup up, `phonesLift` picks the side, `phonesCol` the colour). Override per shot with `o.phones`.
+- `bag` (backpack colour, drawn when `o.backpack`)
 
 **Cartoon proportions (use them; natural proportions look stiff next to Getaway Car):** each look can set `legs` and
 `torso` (fractions of H), `headS` (head scale, 1.4–1.8), `hx`/`hy` (head stretch), `belly` (0–0.7), `arm` (segment
-length), `nose` (`bulb`, `point` or `button`) and `neck`. The example cast follows Getaway Car's silhouettes:
-- **Devit** (the Benny type): short, round, giant head, huge eyes
-- **Nimith** (the Marge type): tall, lanky, pointy nose
-- **Smei:** stocky, with a round belly and a bulb nose
+length), `nose` (`bulb`, `point` or `button`) and `neck`. `CAST` holds the Office series cast, each with a
+silhouette hook: **smey** (early 30s, light blue shirt), **nimith** (late 20s, tall and lanky, glasses, white tee),
+**david** (about 20, short and round, giant head, grey hoodie), **sopheak** (19, slim, side part, headphones round
+the neck), **leanghak** (mid 30s, bob with a clip, cream blouse, navy skirt, lanyard), **pisey** (mid 40s, wavy hair, glasses on
+a chain), **kimlong** (19, chubby, spiky hair, open red flannel, camera), **channy** (22, long straight hair, white
+blouse, pencil skirt), **sreyneang** (21, high bun, navy apron), plus **boss**, **coworker** and **professor**.
+Use them for a new episode, or spread one (`{ ...CAST.channy, shirt: '#…' }`) for extras. The team-story example
+registers its own first-film looks (smei, nimith, devit) in `src/cast.mjs`; a film that needs different looks
+does the same with `Object.assign(CAST, {...})` and imports that module from every entry file (shots, sheet, cover).
 
 Limbs are rubber hoses, eyes are big whites with small pupils, brows are thick and outlined, and every figure has a
 breathing bounce on twos plus a squash on each syllable.
@@ -51,13 +66,28 @@ correctly whatever the body shapes. The cover uses `anchors().head` to put every
 
 Options: `x, y, s, facing` (-1..1: 3/4 left to front to 3/4 right), `back` (seen from behind), `mirror` (flip
 the figure to use the other hand), `pose`, `t`, `expr`, `mouth` (lip-sync 0..1), `look:[x,y]`, `hold:[left,
-right]` (tea | coffee | marker | phone), `nod`, `tilt`, `sq`, `sit`.
+right]` (tea | coffee | marker | phone | notebook | camera), `nod`, `tilt`, `sq`, `sit`, `tears` (0..1, eyes welling
+up then a drop), `headOnly` (redraw just the head, e.g. over a pillow or a desk drawn on top of the body), `rec`
+(the held camera shows a red REC light).
 - **Poses:** stand, walk (`ph`), sitTalk, type, thumbs, wave, draw, glasses, present, presentL, sip, jump (`hop`),
-  raise, cheer, clap, panic, reach / reachL (`reach:[x,y]` in local px), notebook, highfive, hold, sitBack.
+  raise, cheer, clap, panic, rub (hand rubbing the forehead), scratch (embarrassed head scratch), point (index finger
+  out), wag (finger wagging "no no"), phone (phone in the left hand; with `reach` the right hand taps it), call (phone
+  at the ear), reach / reachL (`reach:[x,y]` in local px; add `point: true` for an index finger that follows the
+  forearm), reach2 (both hands to `reach` and `reachL`, e.g. a bear hug), notebook, highfive, hold, sitBack,
+  sampeah (palms together, the Khmer greeting), facepalm, cover (hands over the face), chin (thinking), chest
+  (hand on the heart, other arm flung out), heart (hand heart), belly (clutching the stomach laughing), shout
+  (hands cupped round the mouth), ears (hands on the headphone cups), bump (fist bump), wave2 (two-hand wave),
+  stretch, hug, clip (fixing a hair clip), fixHair (both hands smoothing the hair), leanWall (one hand on a wall,
+  legs crossed), film (camera held up in both hands; `rec`), slump (asleep on the desk; `headDrop` lowers the head).
 - **Expressions:** smile, calm, grin, laugh, proud (eyes closed), surprised, worried, panic, thinking,
-  determined. Blinks are automatic.
-- **Props and furniture:** `chair`, `chairBack`, `teaCup`, `icedCoffee`, `marker`, `notebook(open, drawFn)`, `phone`.
+  determined, tired (heavy lids, eye bags), focus (tongue out, concentrating), sleep (eyes shut), wink (screen-right
+  eye a ^ curve; no blink), love (beating heart eyes). Blinks are automatic.
+- **Props and furniture:** `chair`, `chairBack`, `teaCup`, `icedCoffee`, `marker`, `notebook(open, drawFn)`, `phone`,
+  `camera(ctx, x, y, s, rot, rec, t)` (a mirrorless camera, lens to the viewer).
 - **Elbows:** the IK always picks the outward/downward elbow, so raised hands don't cross the face.
+- **Hands on top of props:** `handShape(ctx, x, y, side, 'point', rot, skin)` is exported, so a shot can draw a
+  big cartoon phone at `anchors().handL` (`phoneUI` from screens.mjs) and then redraw the tapping fingertip over
+  its screen: draw the person, then the phone, then `handShape(...'point'...)` at `anchors().handR`.
 
 Render a model sheet (`npm run sheet`) of every pose you plan to use before animating. Check age reads
 (beard and gray temples for older, rounder face and bigger eyes for younger), that each character has a
@@ -118,3 +148,29 @@ Then change only what the revision touches:
 - the edited lines: delete just those clips
 
 Re-run `npm run voices`. Everything else, including other characters' finished clips, is kept.
+
+## 8. A new Office series episode (the `kimlong` example)
+`new_project.sh <dir> --example kimlong` scaffolds Episode 7 «គីមឡុង ស្ដេចញ៉ែ» (3:44, 15 scenes, 32 shots), the
+latest episode with the full series cast. Copy it and replace the scenes for the next episode:
+- `src/shots.mjs` only imports the scene files (`ep/q1.mjs`, `q2`, `q3`, about five scenes each). Each scene is a
+  `// ===== SCENE n — ...` header followed by `take()` calls. Keep one header per brief scene so a shot list can
+  be generated from the source.
+- `ep/common.mjs` holds the series helpers: cast keys (`SM, NM, DV, KP, LH, PS, KL, CN, SN`), `D` (line length),
+  `pp(ctx, who, t, o)` (person + lip-sync), `seat(who, x, o)` (seated at a desk), `atHead(who, o, headY)` (place a
+  person so the head lands at a height), `headOf`, `room` (the office), `deskFront`, `monitor`, `backRow`,
+  `thoughtBubble`, `titleKh` (the episode title card), `banner`, `heartPop`, `sweat`, `stars`, `blush`, `zzz`,
+  `warmLight` / `goldHour` / `nightTint` (light washes), `wallClock`.
+- `places.mjs` has the series sets: `home`, `street` (+ `tuktuk`), `hallway` (the two office doors, `openB`, `gold`),
+  `deskRow`, `lotusOffice`, `restaurant` + `lunchTable`, `bench`, `mySlide`; `sets.mjs` the original office,
+  meeting room, skyline and rooftop.
+- `ep6.mjs`: `ICON` (small drawn icons used in place of emoji) and `tag(ctx, x, y, text, k, {icon, col, ink, size,
+  rot})` (pop-in label), `victory`, `timeChip`, the phone game (`gameScreen`, `gamePhone`), group chat
+  (`chatPhone`), university sets (`campus`, `classroom`, `uniHall`), `moto`, `laptop`, `polaroid`.
+- `ep7.mjs`: `flirtFx` (✨💕 round a face), `plok` (the «ប្លុក!» rejection), `nameCard` (lower-third name tag),
+  `tripod` / `tripodSide`, `viewfinder` (REC ●, timecode, battery: "seen through the camera"), `meetingRoom`,
+  `slide`, `sunflowers` (falling 🌻), `dreamGlow`, `scoreCard`, `photoFrame` (freeze-frame photo border).
+
+Emoji in a brief («🤜🤛», «👑», «🏆», «💔», «😎») don't render in Koulen: draw them with `ICON` or a small prop
+next to the Khmer text. Slow motion: draw the shot with a scaled clock (`st = t * 0.3`) and add a slower music
+section under it. Freeze frame: hold one `t` for the drawing, flash white with a `shutter` cue, and add a photo
+border with a slow pull-back.

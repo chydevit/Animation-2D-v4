@@ -4,6 +4,7 @@ import { W, H, INK, TAU, paint, circle, oval, rrect, poly, text, clamp, lerp, se
 import { take, clock, beats, talk, cam, toScreen, shk, duration } from './kit.mjs';
 import { lineDur } from './vox.mjs';
 import { person, chair, chairBack, CAST, notebook, icedCoffee, anchors, toLocal as localOf } from './people.mjs';
+import './cast.mjs';
 import { drop } from './chars.mjs';
 import * as st from './sets.mjs';
 import * as fx from './fx.mjs';

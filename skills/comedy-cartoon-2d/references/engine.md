@@ -47,8 +47,23 @@ See story.md.
 
 ## 2c. people.mjs: natural-proportion people
 `person(ctx, lookOrKey, {x, y, s, facing, back, mirror, pose, expr, mouth, look, hold, nod, tilt, sq, sit, t})`.
-Its poses, expressions and props are listed in story.md §2. `chair`, `chairBack`, `teaCup`, `icedCoffee`,
-`marker`, `notebook`, `phone`. The outline width follows the film style.
+`CAST` is the Office series cast. Its looks, poses, expressions and props are listed in story.md §2. `chair`,
+`chairBack`, `teaCup`, `icedCoffee`, `marker`, `notebook`, `phone`, `camera`. `anchors(who, o)` and
+`toLocal(who, o, point)` give contact points. The outline width follows the film style.
+
+## 2d. screens.mjs: phones, laptops, security icons (optional module)
+`phoneUI(ctx, cx, cy, h, t, {mode, ...})` draws a big cartoon phone centred on (cx, cy). Modes: `home`, `msg` (scam
+prize message; `k` pop-in, `flash` link, `alert` red PHISHING overlay), `code` (2FA code notification), `update`
+(`press`, `prog`, `done` → shield), `call` (`answered`, `timer`, `press`), `blocked`, `quiz` (`reveal1/2` circle
+the misspelled link / password box), `safe`, `tutorial` (a video lesson playing; `k` progress), `text` (a message from `from` with `lines`; `k` pop-in).
+`phonePoint(cx, cy, h, PHONE.link)` gives a world point on the screen
+(for a finger to aim at). `laptopUI(ctx, x, y, w, h, t, {mode, base})` draws a laptop whose screen is (x, y, w, h):
+`links` (real vs fake URL, `hl`, `mag` magnifier, `stamp`, `stranger`), `2fa` (`typed`, `lock`, `deny`, `code`),
+`password` (`weak`, `crack`, `strong`, `ok`, `accounts`), `profile` (`blur:[a,b,c]`, `priv`), `slides` (a wall of
+text that flies off line by line as `clean` goes 0→1). Icons: `padlock`,
+`shield`, `check`, `cross`, `warnTri`, `wifi`, `gift`, `stamp(word, x, y, k)` (rubber stamp slam), and
+`thief(ctx, x, y, s, t, {pose: sneak|type|grab|bonk|laugh|sit, flip, reach})`, a hooded cartoon burglar.
+`richLine()`/`pieceX()` draw a line of text in coloured pieces (to highlight one letter of a URL).
 
 ## 3. chars.mjs: example cast (adapt or copy-modify for new characters)
 | function | options |

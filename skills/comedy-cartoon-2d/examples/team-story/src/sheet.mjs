@@ -3,6 +3,7 @@ import { createCanvas } from '@napi-rs/canvas';
 import fs from 'node:fs';
 import { W, H } from './core.mjs';
 import { person, chair } from './people.mjs';
+import './cast.mjs';
 fs.mkdirSync('build/stills', { recursive: true });
 const cv = createCanvas(W, H), ctx = cv.getContext('2d');
 ctx.fillStyle = '#fbefe2'; ctx.fillRect(0, 0, W, H);

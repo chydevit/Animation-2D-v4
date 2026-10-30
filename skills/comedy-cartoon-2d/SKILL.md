@@ -9,11 +9,14 @@ description: >-
   sirens, bike bells, quacks, sad trombone). Dialogue can be in Khmer (default when the user writes Khmer or asks
   for it) or English, spoken by locked VoxCPM2 voices, with Khmer lettering in Koulen and soft Khmer/English
   subtitles. Story films get a natural-proportion person rig, lip-sync from the voice clips, a narrator voice,
-  a timeline that follows the real dialogue, and gentle music (warm, upbeat, build, triumph, tender). Use it
+  a timeline that follows the real dialogue, and gentle music (warm, upbeat, build, triumph, tender, love, game).
+  It carries the Office series cast (Smey, Nimith, David, Sopheak, Leanghak, Pisey, Kimlong, Channy, Sreyneang)
+  with their locked voices and sets. Use it
   whenever the user wants a funny animated short, slapstick, chase or heist cartoon, a gag cartoon "like a TV
   cartoon short", a story video with characters who talk (workplace, team, lesson, introduction or heartfelt
   story) with scenes and dialogue lines, a 2D animation build prompt with characters, beats and timings, a video
-  "like Getaway Car", a new episode with Benny, Marge, the bike cop, Bong Smei, Bong Nimith or Devit, or a cartoon
+  "like Getaway Car", a new episode with Benny, Marge, the bike cop, Bong Smei, Bong Nimith, Devit/David, Sopheak,
+  Leanghak, Pisey or Kimlong (វគ្គថ្មី), or a cartoon
   re-voiced in Khmer, even if they don't name the skill. Prefer khmer-2d-animation for chibi Khmer folk tales,
   kids-cartoon-video for 3D kids learning videos and flat-explainer-doc for narrated explainers.
 ---
@@ -21,13 +24,17 @@ description: >-
 # Comedy & Story Cartoon 2D
 
 Build an original cartoon from a brief, entirely in code: characters, sets, animation, camera, music, sound
-effects, dialogue, lip-sync, subtitles. Two worked examples show the two kinds of film. Read the closer one's
-`src/shots.mjs` before writing a new film, and watch its sample MP4 if you need the target look:
+effects, dialogue, lip-sync, subtitles. Three worked examples show the kinds of film. Read the closest one's
+`src/shots.mjs` before writing a new film, and watch its sample MP4 (or contact sheet) if you need the target look:
 - **Getaway Car** (`examples/getaway-car/`): a 90 s slapstick heist chase. Gags, smears, chase music,
   hard-coded shot times.
 - **Bong Smei, Bong Nimith & Devit** (`examples/team-story/`): a 2.5 min, 8-scene Khmer story about a Phnom Penh
   tech team. Three talking characters plus a narrator, lip-sync, a timeline built from the voices, inserts and
   a split screen. For dialogue-driven films also read `references/story.md`.
+- **Kimlong, the King of Flirting** (`examples/kimlong/`): Office series Episode 7, a 3:44, 15-scene Khmer story
+  with nine series characters and 79 lines. Scenes are split into files (`src/ep/q1–q3.mjs`); it adds name cards,
+  a camera viewfinder (REC ●), slow motion with falling sunflowers, a freeze-frame group photo, chorus lines and the
+  `love` music sting. Start a new episode of the series from it (story.md §8).
 
 `SK` = this skill's folder (`~/.claude/skills/comedy-cartoon-2d`).
 
@@ -60,6 +67,7 @@ when it's unclear.
 SK/scripts/new_project.sh <project-dir>                         # starter film (3 shots) to replace
 SK/scripts/new_project.sh <project-dir> --example getaway-car   # the full comedy example (builds offline)
 SK/scripts/new_project.sh <project-dir> --example team-story    # the full story example (builds offline)
+SK/scripts/new_project.sh <project-dir> --example kimlong       # Office series Ep 7 with the series cast (builds offline)
 ```
 The project gets `src/` (engine plus your film), `voices/`, `film.json` (title and `"style": "bold"` or
 `"pastel"`), `package.json` scripts and `node_modules`. Use `bold` (the *Getaway Car* look: thick black ink,
@@ -104,10 +112,13 @@ stage the whole film on estimated timings while they generate. Split long speech
 separate lines. A narrator is just another voice. If the brief changes a character or a line while voices are
 running, stop the job and regenerate only what changed (story.md §7).
 
+When the clips are done, run `npm run asr` (Khmer Whisper) and re-roll the weak lines with a new seed, keeping the
+better take of each (`npm run asr -- <ids>` compares them; voices.md "Checking clips without ears").
+
 ### 7. Sound
 Add cues to every shot: SFX on contact frames, a whoosh under every smear, stings on reactions, music sections as
 `music`/`music_end` pairs (comedy: chase, sneak, muzak, tension, vamp; story: warm, upbeat, build, triumph,
-tender; `cut`/`fade`/`tapestop` endings), ambience (`room_tone`, `city_amb`, `night_amb`), and silence
+tender, tech, love, game; `cut`/`fade`/`tapestop` endings), ambience (`room_tone`, `city_amb`, `night_amb`), and silence
 before reveals. The full catalogue is in `references/audio.md`. Then run `npm run audio`. It prints the real
 dialogue timeline and warns about **overlapping lines** and **unknown cues**. Khmer lines often run longer than
 planned; fix that by moving cues or growing the shot with `setShift()` and trimming elsewhere (craft.md
@@ -155,18 +166,20 @@ Offer specific next tweaks.
 | `scripts/new_project.sh` | scaffold a project (starter or example) |
 | `template/src/core.mjs` | palette, easing, `paint/cel/hose/smooth/text` primitives, `onTwos`, `wobble`, Khmer font switch |
 | `template/src/kit.mjs` | `shot/setShift`, `take/beats/talk` (voice-driven timing + lip-sync), `cam/shk/toScreen`, `titleCard`, `perspStreet`, `radialLines`, `drawFrame/allCues` |
-| `template/src/people.mjs` | natural-proportion person rig (poses, expressions, props, lip-sync, back view, mirror) |
+| `template/src/people.mjs` | natural-proportion person rig (poses, expressions, props, lip-sync, back view, mirror) and the Office series `CAST` |
+| `template/src/screens.mjs` | phones, laptops, security icons (optional) |
 | `template/src/vox.mjs` | dialogue clips: pause-tightening, real durations, lip-sync envelopes (`npm run durations`) |
 | `template/src/chars.mjs` | example cast rigs (templates for new characters) |
 | `template/src/bg.mjs`, `fx.mjs` | sets and props; effects (dust, impact, lettering, siren wash, iris, smear streaks) |
 | `template/src/render.mjs` | `stills` contact sheets and parallel `video` render |
 | `template/src/audio.mjs` | cue-driven score, SFX synths, VoxCPM dialogue, mix, subtitles, warnings |
 | `template/src/build.mjs` | `mux` (MP4 + soft subtitle tracks) and `qc` |
-| `template/voices/` | `lines.json`, `make_jobs.py`, `run.sh`, `tts_vox.py` (VoxCPM2 worker) |
+| `template/voices/` | `lines.json`, `make_jobs.py`, `run.sh`, `tts_vox.py` (VoxCPM2 worker), `asr_check.py` (Khmer Whisper check, take comparison) |
 | `examples/getaway-car/` | 90 s comedy: `src/shots.mjs`, `prompt.md` (brief + staging table), voices, clips, contact sheet, `Getaway Car.mp4` |
-| `examples/team-story/` | ~3 min Khmer story: `src/` (shots, sets, cast sheet), `prompt.md`, voices, clips, contact sheet, sample MP4 |
+| `examples/team-story/` | ~3 min Khmer story: `src/` (shots, sets, its own `cast.mjs`, cast sheet), `prompt.md`, voices, clips, contact sheet, sample MP4 |
+| `examples/kimlong/` | Office series Ep 7 (3:44 Khmer story): `src/` (`ep/` scene files and series helpers, `places.mjs`, `ep6.mjs`/`ep7.mjs` props and effects, cover, cast sheet), `prompt.md`, 11 locked voices, 79 clips, contact sheet, cover |
 | `references/engine.md` | every drawing/rig/set/fx API |
 | `references/audio.md` | cue catalogue, music sections, mix, checking audio without ears |
 | `references/voices.md` | lines.json, VoxCPM2 flow, writing Khmer, fitting lines to picture |
 | `references/craft.md` | style bible, comedy timing, staging, retiming, QC checklist |
-| `references/story.md` | dialogue-driven films: voice-driven timeline, people rig, lip-sync, staging, revising briefs |
+| `references/story.md` | dialogue-driven films: voice-driven timeline, people rig, lip-sync, staging, revising briefs, series episodes |
