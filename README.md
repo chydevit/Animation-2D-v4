@@ -8,11 +8,68 @@ videos where characters talk, with lip-sync and a narrator.
 |---|---|
 | `skills/comedy-cartoon-2d/` | the Claude Code skill (engine, guides, and three finished example films) |
 | `commands/cartoon.md` | the short `/cartoon` command that runs the skill |
+| `docs/demo/` | the preview GIFs and photos shown below |
+
+## Quick start
+1. Install the tools (once): `brew install node ffmpeg`
+2. Install the skill: copy and paste this into **Terminal**:
+   ```sh
+   git clone --depth 1 https://github.com/chydevit/Animation-2D-v4.git
+   mkdir -p ~/.claude/skills ~/.claude/commands
+   cp -R Animation-2D-v4/skills/comedy-cartoon-2d ~/.claude/skills/
+   cp Animation-2D-v4/commands/cartoon.md ~/.claude/commands/
+   ```
+3. Restart Claude Code. Type **`/`**, pick **`/cartoon`** from the menu and describe your cartoon after it:
+   ```
+   /cartoon a hungry cat tries to steal a fish from a market seller, 60 seconds, Khmer voices
+   ```
+
+For talking characters, also install the voice engine ([Step 3](#step-3-install-the-voice-engine-voxcpm2-for-dialogue)).
+The full guide is in [section 2](#2-make-your-own-cartoon-with-the-skill).
 
 ---
 
 ## 1. See what it makes
-The skill includes three finished films as examples:
+
+### Video demos
+Short previews of the three example films (no sound here; the films have Khmer voices, music and sound effects).
+Click a preview to open the full film.
+
+| Getaway Car | Bong Smei, Bong Nimith & Devit | Kimlong, the King of Flirting |
+|:---:|:---:|:---:|
+| [![Getaway Car preview](docs/demo/getaway-car.gif)](skills/comedy-cartoon-2d/examples/getaway-car/Getaway%20Car.mp4) | [![Bong Smei, Bong Nimith and Devit preview](docs/demo/team-story.gif)](skills/comedy-cartoon-2d/examples/team-story/Bong%20Smei,%20Bong%20Nimith%20and%20Devit.mp4) | [![Kimlong, the King of Flirting preview](docs/demo/kimlong.gif)](skills/comedy-cartoon-2d/examples/kimlong/) |
+| 90 s slapstick heist comedy, bold TV-cartoon look | 2.5 min Khmer story about a Phnom Penh tech team | 3:44 Khmer Office series episode, nine characters |
+
+### Photos
+**Covers.** Every film gets a cover that is also embedded as the MP4's thumbnail (Getaway Car was made before
+covers existed, so its title card is shown).
+
+| | | |
+|:---:|:---:|:---:|
+| ![Getaway Car title card](docs/demo/getaway-car-cover.jpg) | ![Bong Smei, Bong Nimith and Devit cover](docs/demo/team-story-cover.jpg) | ![Kimlong, the King of Flirting cover](docs/demo/kimlong-cover.jpg) |
+
+**Character sheets** (`npm run sheet`). Claude shows you one of these before it animates anything.
+
+| Getaway Car cast | Office series cast |
+|:---:|:---:|
+| ![Getaway Car character sheet](docs/demo/getaway-car-characters.jpg) | ![Office series character sheet](docs/demo/kimlong-characters.jpg) |
+
+<details>
+<summary><b>Contact sheets</b> (24 frames from across each whole film; click to open)</summary>
+
+**Getaway Car**
+![Getaway Car contact sheet](skills/comedy-cartoon-2d/examples/getaway-car/contact_sheet.png)
+
+**Bong Smei, Bong Nimith & Devit**
+![Bong Smei, Bong Nimith and Devit contact sheet](skills/comedy-cartoon-2d/examples/team-story/contact_sheet.png)
+
+**Kimlong, the King of Flirting**
+![Kimlong, the King of Flirting contact sheet](skills/comedy-cartoon-2d/examples/kimlong/contact_sheet.png)
+
+</details>
+
+### The example films
+The skill includes the three films as examples:
 - `skills/comedy-cartoon-2d/examples/getaway-car/Getaway Car.mp4`: a 90-second slapstick heist comedy
 - `skills/comedy-cartoon-2d/examples/team-story/Bong Smei, Bong Nimith and Devit.mp4`: a 2.5-minute story about a
   Phnom Penh tech team (a mentor, an engineer and a junior developer)
@@ -20,7 +77,7 @@ The skill includes three finished films as examples:
   Flirting), a 3:44 Khmer story with nine series characters. It has a contact sheet and cover instead of a video;
   build it yourself (section 4) to get the MP4.
 
-Open either in any video player. To see subtitles, choose **Subtitles → ខ្មែរ** or **English** (in QuickTime:
+Open the MP4s in any video player. To see subtitles, choose **Subtitles → ខ្មែរ** or **English** (in QuickTime:
 *View → Subtitles*; VLC also works).
 
 ---
@@ -40,12 +97,37 @@ brew install node ffmpeg
 (No Homebrew? Get it at https://brew.sh.)
 
 ### Step 2: install the skill
+Claude Code loads skills from `~/.claude/skills/` and slash commands from `~/.claude/commands/`. Copy one of each
+there:
 ```sh
-git clone https://github.com/chydevit/Animation-2D-v4.git
-cp -R Animation-2D-v4/skills/comedy-cartoon-2d ~/.claude/skills/
-mkdir -p ~/.claude/commands && cp Animation-2D-v4/commands/cartoon.md ~/.claude/commands/   # the /cartoon shortcut
+git clone --depth 1 https://github.com/chydevit/Animation-2D-v4.git     # download (about 130 MB: the example films are included)
+mkdir -p ~/.claude/skills ~/.claude/commands                           # make the folders if they don't exist yet
+cp -R Animation-2D-v4/skills/comedy-cartoon-2d ~/.claude/skills/       # the skill
+cp Animation-2D-v4/commands/cartoon.md ~/.claude/commands/             # the /cartoon shortcut
 ```
-Restart Claude Code so it picks up the skill.
+No git? On the GitHub page click **Code → Download ZIP**, unzip it, and run the last three lines from the folder
+that holds the unzipped `Animation-2D-v4` folder (rename it to `Animation-2D-v4` if it is called
+`Animation-2D-v4-main`).
+
+Then **quit and reopen Claude Code** so it finds the new skill.
+
+**Check that it worked.** Both files should be listed:
+```sh
+ls ~/.claude/skills/comedy-cartoon-2d/SKILL.md ~/.claude/commands/cartoon.md
+```
+Then in Claude Code type `/cart`: the menu should show **`/cartoon`** and **`/comedy-cartoon-2d`**.
+
+**Update to a newer version later:**
+```sh
+cd Animation-2D-v4 && git pull
+rsync -a --delete skills/comedy-cartoon-2d/ ~/.claude/skills/comedy-cartoon-2d/   # replaces the installed copy
+cp commands/cartoon.md ~/.claude/commands/
+```
+
+**Remove it:**
+```sh
+rm -rf ~/.claude/skills/comedy-cartoon-2d ~/.claude/commands/cartoon.md
+```
 
 ### Step 3: install the voice engine (VoxCPM2) for dialogue
 Skip this step if your cartoon has no talking. Run it once:
@@ -60,16 +142,50 @@ account or internet needed after that.
 (If you already have the `khmer-2d-animation` skill installed, its voice setup is used automatically and you can
 skip this step.)
 
-### Step 4: ask Claude for a cartoon
-Open Claude Code in an empty folder and type `/cartoon` (the short way) or `/comedy-cartoon-2d`, then describe your
-cartoon after it:
+### Step 4: call the skill with `/`
+Each cartoon gets its own folder. Make one and open Claude Code in it:
+```sh
+mkdir ~/my-cartoon && cd ~/my-cartoon && claude
 ```
-/cartoon a hungry cat tries to steal a fish from a market seller on a scooter, 60 seconds, Khmer voices
-```
-`/cartoon` uses the Getaway Car cartoon look unless you ask for something else.
-Typing `/` shows a menu of your skills; start typing `comedy` and press **Tab** or **Enter** to pick it.
+(Using the Claude desktop app or VS Code instead? Open the empty folder there.)
 
-You can also just describe your cartoon without the `/` and Claude will pick the skill by itself. Examples:
+**How to call the skill:**
+1. In the message box, type **`/`**. A menu of your commands and skills opens.
+2. Keep typing **`cart`** to narrow the list. You will see:
+
+   | pick this | what it does |
+   |---|---|
+   | **`/cartoon`** | the short way. Uses the Getaway Car look (thick outlines, bright colours) unless you ask for another look |
+   | **`/comedy-cartoon-2d`** | the skill's full name. Claude chooses the look from your description |
+
+3. Use the arrow keys to highlight the one you want and press **Tab**. The name is filled in for you.
+4. After the name, type a space and describe your cartoon on the same line, then press **Enter**:
+   ```
+   /cartoon a hungry cat tries to steal a fish from a market seller on a scooter, 60 seconds, Khmer voices
+   ```
+   If you send `/cartoon` with nothing after it, Claude asks you what cartoon to make.
+
+You can write in Khmer too; then the dialogue is Khmer:
+```
+/cartoon ធ្វើរឿងតុក្កតាកំប្លែង ១ នាទី៖ ឆ្មាឃ្លានមួយព្យាយាមលួចត្រីពីអ្នកលក់ត្រីនៅផ្សារ
+```
+
+**Give more detail for a better cartoon.** After `/cartoon`, you can fill in this template. Paste it, or type it
+and end each line with `\` before pressing **Enter** to start a new line:
+```
+/cartoon
+Title: The Fish Thief
+Length: 60 seconds
+Language: Khmer voices, English subtitles
+Look: Getaway Car look (or: soft pastel)
+Characters: a skinny orange cat; a fish seller on a red scooter; a sleepy market dog
+Story: the cat tries three tricks to steal a fish, and each one goes wrong
+Ending: the seller laughs and gives the cat the smallest fish
+```
+
+**Without `/`.** You can also mention the skill by name in a normal message, e.g. *"Use the comedy-cartoon-2d
+skill to make …"*, or just describe a cartoon: Claude picks the skill by itself when your request is about a
+cartoon. The `/` way is the surest. More examples:
 
 - *"Make a funny 60-second cartoon: a hungry cat tries to steal a fish from a market seller on a scooter. Khmer voices."*
 - *"Make a new Getaway Car episode: Benny and Marge try to rob an ice-cream truck, and the bike cop is the ice-cream man."*
@@ -97,7 +213,8 @@ voice line with Khmer Whisper and re-records unclear ones.
 then 10–60 seconds per line. A 90-second cartoon with ~15 lines takes roughly **30–60 minutes** in total.
 
 ### Step 5: change things
-Just tell Claude what to change, for example:
+Just tell Claude what to change (no `/` needed). To come back another day, open Claude Code in the same folder
+(`cd ~/my-cartoon && claude`) and carry on. For example:
 - *"Make the duck scene longer and add one more duckling."*
 - *"Marge's voice should be deeper."*
 - *"Change the dialogue to English."*
@@ -150,7 +267,9 @@ The Khmer voice clips are included, so this works without the voice engine (abou
 |---|---|
 | `VoxCPM2 python not found` | do Step 3, then open a new terminal (or set `VOX_PY` to a Python that has `voxcpm` installed) |
 | `missing build/vox/....wav` | run `npm run voices` |
-| Claude doesn't use the skill | start your message with `/comedy-cartoon-2d`; if it's not in the `/` menu, check `~/.claude/skills/comedy-cartoon-2d/SKILL.md` exists and restart Claude Code |
+| Claude doesn't use the skill | start your message with `/cartoon` or `/comedy-cartoon-2d` |
+| `/cartoon` or `/comedy-cartoon-2d` is not in the `/` menu | run the check in [Step 2](#step-2-install-the-skill); if a file is missing, copy it again, then quit and reopen Claude Code |
+| `cp: ... No such file or directory` while installing | run `mkdir -p ~/.claude/skills ~/.claude/commands` first, and run the `cp` lines from the folder that contains `Animation-2D-v4` |
 | a voice says a word wrong | ask Claude to re-roll that line, or change its spelling a little |
 | `ffmpeg: command not found` | `brew install ffmpeg` |
 
